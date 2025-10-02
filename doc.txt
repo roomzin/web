@@ -1,0 +1,1112 @@
+--------------------------------------------------------
+ROOMZIN – COMPLETE PRODUCT DESCRIPTION
+--------------------------------------------------------
+
+WHAT IS ROOMZIN?
+A fast and light inventory engine built for booking platforms.  
+Run it as a single instance behind your backend nodes, or spin up a cluster when you need HA and speed through horizontal scaling.  
+
+WHAT DO YOU MEAN BY “LIGHT”?
+- One self-contained binary (< 5 MB) handles single mode, cluster mode, and seed-data ingest.  
+- No extra tools or dependencies.  
+- Feed it 5 GB of data and it uses ~2.5 GB RAM.  
+- Its portable snapshot on disk is even tinier.  
+
+WHAT DO YOU MEAN BY “FAST”?
+Under heavy traffic it answers complicated search queries with big payloads in a few milliseconds, beating every other tool.  
+
+IS THAT ALL?
+Of course not. It’s also simple: simple to deploy, simple to use.
+
+--------------------------------------------------------
+THE PROBLEM ROOMZIN SOLVES
+--------------------------------------------------------
+
+PLANET-WIDE SHARDING  
+Global booking platforms serve the entire planet by dividing it into regional shards. Traffic is routed to the relevant shard, where multiple nodes provide high availability and load balancing. Each node stores only the inventory for its specific zone.
+
+CACHE IS MANDATORY—YET PAINFUL  
+A cache layer sits in front of the database to hide disk latency. Sounds easy—until you discover that a cache is just a key-value bucket. Teams must design keys, set TTLs, invalidate on every update, and still make dozens of round-trips to collect scattered bits and join them in memory.
+
+THE UGLY QUERY  
+“Find me two rooms, under $120 a night, breakfast included, pay-at-property, cancellable, for five nights, in a 4-star business hotel or motel, pet-friendly, with pool, gym, restaurant and a view, somewhere near this lat/lng.”  
+The filter list is 100 k properties long; availability changes by the second; price changes by the minute.
+
+DB FALLBACK = LATENCY KILLER  
+Fall back to the database? Latency murders high-TPS targets. Replicate for HA? More boxes, more shards, more midnight pages, more budget.
+
+ROOMZIN STEPS IN HERE  
+Keep reading to see where Roomzin slips into this picture and makes the noise quiet.
+
+--------------------------------------------------------
+HOW ROOMZIN FITS IN
+--------------------------------------------------------
+
+SEAT AT THE TABLE  
+Roomzin parks right next to your cache, on top of the DB. One round-trip query—faster than any in-memory DB—returns every search hit for the hot window.
+
+- Full-blown DB? Nope. It accelerates only the booking hot-window (next weeks/months) that absorb ~95 % of live traffic.  
+- Window cap? None hard-coded. Admins keep only the interval worth RAM—usually 15-90 days.  
+- Tail-latency guard-rails: Admins can soft-cap “max nights” and “max results per query” so a 10 k/s TPS never drags MS into seconds; edge cases spill to the main DB.  
+- Any constraints on data? Just one: Up to 16 amenities and 8 cancellation rules must be defined in a constants.yml file. These limits are not hardcoded by the product but are set by companies to cover 95% of use cases—a deliberate trade-off for speed.  
+- Redis killer? No. Redis stays for static key/value chores; Roomzin adds travel-native schema and single-query speed for hot searches.
+
+TRAFFIC FLOW IN 3 STEPS  
+1. Backend fires one complex search to Roomzin.  
+2. Roomzin replies with matching property IDs + nightly room details for the whole stay.  
+3. Client scrolls → platform fetches static hotel info from Redis only for items in view.
+
+RESULT: 95 % of queries finish in milliseconds, Redis keeps doing what it loves, and your DB breathes again.
+
+--------------------------------------------------------
+DEPLOYMENT SIMPLICITY
+--------------------------------------------------------
+
+HOW EASY IS IT TO DEPLOY ROOMZIN?
+
+STANDALONE  
+One binary, three YAML files (config + auth + constants list).  
+Run it. Done.
+
+CLUSTER  
+Same binary on every node; they self-discover, elect a leader, and wire themselves into a secure cluster.  
+You only supply:  
+- a seed list (one node name is enough)  
+- certificates (.pem files) for TLS
+
+SCALE?  
+Add a node → cluster grows. Remove a node → cluster shrinks. Zero config change, zero downtime.
+
+--------------------------------------------------------
+CLIENT CONNECTIVITY
+--------------------------------------------------------
+
+NO CUSTOM ROUTING LAYER NEEDED  
+Roomzin lives inside one shard; all traffic stays internal to that shard.
+
+SDKS DO THE HEAVY LIFTING  
+- Go, Java, Python, C#  
+- Topology-aware: give any single node name, the SDK downloads the cluster map  
+- Writes and reads are auto-routed to the fastest node(s) with built-in load-balancing  
+- Leader crash? New election? Node disappears? SDK reroutes instantly—no code change, no restart
+
+ONLY INFRA REQUIREMENT: a DNS resolver so cluster and SDKs can resolve node IPs. That’s it.
+
+--------------------------------------------------------
+DATA MODEL
+--------------------------------------------------------
+
+WHAT DOES THE SCHEMA LOOK LIKE?
+Three primitives:
+
+- Property: segment · area · property id (uuid or short string) · type · category · stars · geo(lat+lon) · amenities  
+- Room Type: standard . double . deluxe . suite . etc...  
+- Daily Package: date · availability · final price · rate & cancellation rules
+
+Hot window (15-90 days or more) lives entirely in RAM; update or patch any field in real time while searches stay instant.  
+All commands/queries in SDKs are around these entities for millions of records.
+
+--------------------------------------------------------
+SEEDING DATA
+--------------------------------------------------------
+
+START FRESH OR SEED FROM EXISTING DB?
+
+BULK SEED IN SECONDS  
+Point Roomzin at a CSV snapshot: it ingests > 1.2 M records/sec, zero INSERT queries.
+
+ONE-TIME TASK PER FRESH SHARD  
+Run it once for a fresh shard; when the snapshot lands the cluster starts live-sync and never needs a repeat.
+
+FINAL WHISK  
+Stream the last delta (whatever arrived while this process) with SDK.
+
+--------------------------------------------------------
+DATA PARTITIONING & CONSISTENCY
+--------------------------------------------------------
+
+IS DATA PARTITIONED ACROSS ROOMZIN NODES?
+Nope. Every node keeps the entire state in RAM.  
+The leader replicates each write to all followers; consistent state arrives in single-digit milliseconds—no sharding keys, no cross-node joins, no surprises.
+
+ARE WRITES INSTANT UNDER HEAVY LOAD?
+Yes. Read and write paths are decoupled; the write channel always gets priority, so even when search traffic floods the queue, updates still commit in milliseconds.
+
+DOES ROOMZIN PARTITION DATA INSIDE A NODE?
+SEGMENTS = INNER PARALLELISM  
+Each node splits its copy of the shard into user-defined segments (think “micro-regions” or “search buckets”).
+
+- Every segment owns its own processing queue — thousands of Paris properties? Split into 5-10 segments and let all cores run in parallel.  
+- No geography baked into IDs — devs choose segment keys that mirror real-world search patterns (city name, district, GeoHash, custom hash).  
+- Segment is mandatory in every search—just like picking a city
+
+Use it when you want to squeeze every last core; skip it when your data is already cozy.
+
+--------------------------------------------------------
+OBSERVABILITY
+--------------------------------------------------------
+
+HOW VISIBLE IS ROOMZIN?
+
+PROMETHEUS-NATIVE  
+Every node exposes metrics in plain Prometheus format: TCP activity, cluster connectivity, request flow, system state, snapshots, WAL ops—Grafana-ready out of the box.
+
+REST SELF-DESCRIPTION  
+Each node also serves health check, node info, known peers, current role, known leader, last snapshot info, and quorum size—no guessing, just query.
+
+--------------------------------------------------------
+ADMIN OPERATIONS
+--------------------------------------------------------
+
+CAN THE REST API DO MORE THAN READ?
+Absolutely.  
+Admins also write: shutting down a node, update peers, explicit update on quorum-size after permanent scale up/down to avoid split brain, trigger a snapshot, or rotate TLS certs—all without SSH or restart.
+
+--------------------------------------------------------
+CLUSTER FORMATION
+--------------------------------------------------------
+
+HOW DOES A NODE JOIN THE CLUSTER?
+
+1. Discovery & Quorum  
+   Starts in “Joining” mode, replays its local WAL, then knocks on every seed address.  
+   Shard-ID and certificates must match; if the cluster already exists it learns the current leader, otherwise it jumps into the election game.
+
+2. State Sync  
+   Compares its snapshot with the leader’s.  
+   Missing bytes? Streams the newest snapshot from a same-zone buddy first, falls back to any node, then rebuilds the in-memory state.
+
+3. Log Catch-up  
+   Downloads the WAL segment that starts right after the snapshot, replays every entry, and keeps ingesting live writes until it’s byte-perfect with the leader.
+
+4. Go Active  
+   Status flips to “Active”; the node now votes, replicates, and serves reads like every other member—zero manual steps, zero downtime.
+
+--------------------------------------------------------
+AUTO-MAINTENANCE
+--------------------------------------------------------
+
+AUTO-MAINTENANCE?
+Pick a low-traffic hour to trigger the tasks (single node or whole cluster).  
+Roomzin drops yesterday’s expired data, then snaps a fresh checkpoint—no manual cleanup, no extra scripts.
+
+--------------------------------------------------------
+CONSENSUS PROTOCOL
+--------------------------------------------------------
+
+DOES ROOMZIN USE RAFT?
+No — Roomzin runs a lean, home-grown, Raft-like protocol:
+
+- Fast failure detection & auto-join  
+- Writes are broadcast-replicated before the leader sends the client ACK  
+- Single-digit-ms strong consistency, not strict linearizability  
+
+--------------------------------------------------------
+WIRE PROTOCOLS
+--------------------------------------------------------
+
+WHAT PROTOCOL DO CLIENTS SPEAK?
+A custom, binary protocol—zero text parsing, zero wasted bits, built to serve high QPS pipelines full without breaking a sweat.
+
+HOW DO NODES TALK TO EACH OTHER?
+QUIC + TLS with auto certificate rotation—encrypted by default, zero-handshake latency, fast stream replication, and safe across data-centers. (Just keep valid certs on every node.)
+
+IS TLS ENABLED ON THE CLIENT TCP PORT?
+Nope. Roomzin sits inside your private mesh; leave TLS termination to the load-balancer or service mesh you already run.
+
+--------------------------------------------------------
+ACCESS CONTROL
+--------------------------------------------------------
+
+WHO CAN DO WHAT?
+Three built-in roles, no extra plugins:
+
+- monitoring – read metrics & safe GET endpoints only  
+- client – CRUD on TCP, but just GET on REST  
+- admin – full control: writes, config, shutdown, snapshots, TLS rotate  
+
+Lock them down with sdk credentials or token headers — done.
+
+--------------------------------------------------------
+TECHNICAL FOUNDATION
+--------------------------------------------------------
+
+WHAT LANGUAGE IS ROOMZIN BUILT IN?
+100 % Rust—zero-GC, fearless concurrency, single 5 MB binary that ships everything it needs.
+
+WHAT KIND OF PERFORMANCE CAN I EXPECT?
+- Resilient & predictable – under any connection mix, data volume, or traffic  
+- Median latency – single-digit ms at million-record scale  
+- Snapshots – < 1 s for millions of records  
+- Reload – millions of records in (few) second(s)  
+- Memory footprint – ≤ 50 % of raw data size
+
+--------------------------------------------------------
+RECAP OF KEY CAPABILITIES
+--------------------------------------------------------
+
+BUILT FOR BOOKING-SCALE WORKLOADS
+- Any topology: single node → clustered  
+- HA: leader/follower, WAL & snaps  
+- Zero-ops: auto-discovery, join, catch-up  
+- Secure wire: QUIC + TLS auto-rotate  
+- RBAC & realtime metrics  
+- Partitioned data for parallel speed  
+- Hot snapshots under load in cluster mode  
+- Smart SDKs: Java, Go, Python, C#
+
+EASY INTEGRATION
+- SDKs: auto-route, failover, retry, one-liner install  
+- Deployment: <5 MB binary, zero external deps  
+- Load from DB: CSV seed at +1.2 M records/sec
+
+--------------------------------------------------------
+QUICK START – SINGLE NODE
+--------------------------------------------------------
+
+Get Roomzin Running in Standalone Mode
+
+OVERVIEW  
+This guide walks you through setting up a single-node Roomzin instance and performing a simple search using SDKs.  
+We’ll use standalone mode for simplicity—no clustering involved.
+
+QUICK STEPS  
+1. Configure  
+2. Start Server  
+3. Connect SDK  
+
+CONFIGURATION SETUP  
+Create three YAML configuration files in your working directory:
+
+roomzin.yml  
+tcp:  
+  listen_addr: "127.0.0.1"  
+  port: 7777  
+  max_connections: 1000  
+auth_file: "auth.yml"  
+api_port: 8080  
+snapshot_path: "./snapshots"  
+maintenance_hour: 3  
+
+auth.yml  
+tokens:  
+  - token: abc123  
+    role: admin  
+  - token: client-token  
+    role: client  
+
+constants.yml  
+amenities:  
+  - wifi  
+  - pool  
+  - gym  
+  - parking  
+  - breakfast  
+  - spa  
+  - pet_friendly  
+  - bar  
+  - restaurant  
+  - air_conditioner  
+  - kitchen  
+  - laundry  
+  - shuttle  
+  - family_rooms  
+  - ev_charging  
+  - beach_access  
+rate_cancels:  
+  - free_cancellation  
+  - non_refundable  
+  - pay_at_property  
+  - includes_breakfast  
+  - free_wifi  
+  - no_prepayment  
+  - partial_refund  
+  - instant_confirmation  
+
+START ROOMZIN SERVER  
+Launch in standalone mode:  
+./roomzin run --config ./roomzin.yml  
+
+CONNECT & QUERY WITH SDK  
+See the individual SDK sections (Go, Java, Python, C#) for copy-paste examples that set a property, load ten days of packages, and run a two-night availability search.
+
+--------------------------------------------------------
+QUICK START – CLUSTER
+--------------------------------------------------------
+
+Local Docker Testing Environment
+
+CRITICAL WARNING  
+This Docker setup is for local testing only. Production deployment uses bare metal/VMs for optimal performance.
+
+PRODUCTION REALITY  
+Single binary + three files on bare metal/VMs. This Docker playground lets you test cluster features like auto-joining and snapshot loading in minutes.
+
+INTRODUCTION  
+This quick-start guide sets up a 3-node Roomzin cluster using Docker to test clustered mode with minimal effort. The cluster can start fresh or load a user-provided snapshot created as described in the Bulk-Load section.
+
+QUICK STEPS  
+1. Prerequisites  
+2. Prepare Files  
+3. Start Cluster  
+4. Test & Verify  
+5. Clean Up  
+
+PREREQUISITES  
+- Docker installed on your machine  
+- sshpass installed (sudo apt-get install sshpass on Ubuntu)  
+- Deployment package: roomzin-deployment.zip  
+
+PREPARE FILES  
+Extract roomzin-deployment.zip to a directory (e.g., roomzin-deploy/). Directory structure:  
+roomzin-deploy/  
+├── roomzin  
+├── configs/  
+│   ├── roomzin.yml  
+│   ├── auth.yml  
+│   ├── constants.yml  
+├── certs/  
+│   ├── roomzin-0/  
+│   │   ├── cert.pem  
+│   │   ├── key.pem  
+│   │   ├── ca.pem  
+│   ├── roomzin-1/  
+│   ├── roomzin-2/  
+├── snapshots/  
+├── Dockerfile  
+├── setup.sh  
+├── Makefile  
+
+CONSTANTS FILE  
+The test cluster uses the provided constants.yml with predefined amenities and rate-cancellation rules. For production your admin team will provide business-specific constants.
+
+OPTIONAL SNAPSHOT  
+To initialize with data, create a snapshot as described in Bulk-Load and place it in snapshots/. If no snapshot is provided, the cluster starts fresh.
+
+START CLUSTER  
+Navigate to roomzin-deploy/ and run: make start  
+What this does:  
+- Builds node-specific Docker images with preconfigured certs  
+- Starts 3-node cluster on IPs 172.20.0.10–12  
+- Configures node communication and loads constants  
+- Loads optional snapshot or starts fresh  
+- Verifies cluster health via API endpoints  
+
+TEST & VERIFY  
+Test with SDKs  
+Use any SDK (Go, Java, Python, C#) to query the cluster. Configure with seed hosts (roomzin-0,roomzin-1,roomzin-2), TCP port 7777, and API port 8080. See SDKs section on the left for detailed examples.
+
+Verify Cluster Health  
+Check cluster status: make test  
+Queries health and peers endpoints for all nodes (172.20.0.10–12).
+
+CLEAN UP  
+Stop and remove the cluster: make stop  
+
+TROUBLESHOOTING  
+Startup fails? Check container logs: docker exec roomzin-0 bash -c "cat /opt/roomzin/roomzin.log"  
+Node not joining cluster? Verify hosts file: docker exec roomzin-0 cat /etc/hosts  
+Authentication errors? Use abc123 (admin) or client-token (client) tokens  
+
+DNS RESOLUTION  
+Test containers use /etc/hosts entries for node discovery:  
+172.20.0.10 roomzin-0  
+172.20.0.11 roomzin-1  
+172.20.0.12 roomzin-2  
+In production your DevOps team will create equivalent A-records in your internal DNS—no hosts-file hacks required.
+
+--------------------------------------------------------
+DATA MODEL REFERENCE
+--------------------------------------------------------
+
+DATA MODEL AT A GLANCE  
+Everything hinges on three primitives:  
+1. Property  
+2. Room Type  
+3. Daily Package  
+
+Together they form a self-contained, in-memory state machine that powers every update and search without external caches or joins.  
+Roomzin loads the “hot window” (15, 30, 60 days or more) and keeps it mutable—add, remove, or patch availability and prices in real time while queries remain instant.  
+Drop Roomzin in and you get a zero-ops, in-memory inventory engine—no caches, expiry headaches, or joins required. Plug in and run at speed.
+
+CONSTRAINTS BY DESIGN  
+Amenities and rate-cancellation rules must be defined in a constants.yml file placed next to the configuration file. This file follows a specific schema, with up to 16 amenities and 8 rate-cancellation rules. The order of entries is critical, as Roomzin uses this file for internal mapping. Any change to constants.yml will invalidate existing queries, requiring a full restart of the cluster or standalone instance and dropping all snapshots, as they will no longer be valid. Modifications to this file should be treated as an admin-level operation. While the limits of 16 amenities and 8 rate-cancellation rules may seem restrictive, they are a deliberate trade-off for performance.
+
+SCHEMA FOR CONSTANTS.YML  
+amenities:  
+  - wifi  
+  - pool  
+  # ... up to 16 entries  
+rate_cancels:  
+  - free_cancellation  
+  - non_refundable  
+  # ... up to 8 entries  
+
+EXAMPLE VALUES  
+Amenities: wifi . pool . gym . parking . breakfast . spa . pet-friendly . bar . restaurant . A/C . kitchen . laundry . shuttle . family rooms . EV charging . beach access  
+Rate / Cancellation: free cancellation . non-refundable . pay at property . free Wi-Fi . includes breakfast . no prepayment . partial refund . instant confirmation
+
+--------------------------------------------------------
+ARCHITECTURE OVERVIEW
+--------------------------------------------------------
+
+Fast, In-Memory, Self-Managed Booking Engine  
+Roomzin is a high-performance, Rust-based booking engine built as a self-contained binary (<5MB) for both standalone and clustered deployments. Its in-memory state machine, optimized for properties, room types, and daily packages, delivers low-latency searches and updates without external dependencies. The architecture is designed for simplicity, speed, and scalability, handling millions of records and thousands of connections with consistent performance.
+
+CORE COMPONENTS  
+Roomzin consists of three tightly integrated components, all part of a single binary, ensuring easy deployment and operation.
+
+- TCP Server: Handles client connections with one-time authentication per connection lifetime, using a custom, high-speed binary protocol. Supports up to 10,000 concurrent connections with minimal latency.  
+- API Server: Provides HTTP endpoints for admin and non-admin operations, including cluster status, node information, and Prometheus-format metrics for both TCP server and cluster health.  
+- Cluster Agent: Manages node communication in clustered mode using QUIC with TLS and automatic certificate rotation, enabling secure and fast inter-node coordination.
+
+DATA MANAGEMENT  
+Roomzin’s in-memory state machine is partitioned into segments for efficient data handling, with robust persistence mechanisms to ensure reliability.
+
+- Segmented State Machine: Properties are grouped into segments (e.g., by region) for independent processing, enabling fast searches and updates across the hot window (e.g., 15–60 days).  
+- Snapshot & WAL: Binary snapshots load +1.2M records per second, with sizes under 1GB for large datasets. Write-ahead logging (WAL) ensures durability in clusters. Snapshots can be built offline from two CSV files mapping client data.  
+- Maintenance: Configurable maintenance hours trigger snapshot saves and automatic removal of past-day data, keeping the system lean.
+
+CLUSTERED MODE & CONSENSUS  
+Roomzin’s clustered mode ensures high availability and scalability with a Raft-like consensus protocol, maintaining fast strong consistency across nodes.
+
+- Auto-Join & Catch-Up: Nodes join clusters automatically with a seed address, fetching snapshots and WAL from the closest node to sync seamlessly.  
+- Leader/Follower Model: Only the leader handles writes, while followers serve reads. Fast leader failure detection and election ensure minimal disruption.  
+- Zero-Downtime Snapshots: The leader delegates snapshot saving to a follower, allowing uninterrupted operation during persistence.  
+- Node Synchronization: All nodes stay in sync, with no external service discovery needed. Admins can update the leader’s peer list, which propagates across the cluster.
+
+SDK & CLIENT INTERACTION  
+Roomzin’s SDKs (Go, Java, Python, C#) are optimized for performance and ease of use, leveraging the custom binary protocol for efficient communication.
+
+- Decoupled Streams: SDKs send request streams with client request IDs (clrid) and receive responses on a separate channel, ensuring high throughput.  
+- Smart Routing: In clustered mode, SDKs query the API server for cluster topology, route write requests to the leader, and read requests to the fastest follower based on response latencies.  
+- Minimal Setup: SDKs need only one node address to fetch the full cluster schema, simplifying integration.
+
+SECURITY & ACCESS CONTROL  
+Roomzin prioritizes security with simple yet robust access controls and encrypted communication.
+
+- Role-Based Access Control (RBAC): Three access levels—admin (full control), client (SDK data operations), and monitoring (read-only)—configured via a simple auth.yml file.  
+- Secure Communication: TCP server uses one-time authentication per connection. Cluster agent uses QUIC with TLS and auto-rotating certificates.
+
+PERFORMANCE & SCALABILITY  
+Built in Rust, Roomzin is optimized for speed and resource efficiency, scaling seamlessly with data size and connections.
+
+- Low Latency: Consistent performance whether handling 6M or 60M records, 10 or 1,000 connections, with median query latencies in milliseconds.  
+- Vertical & Horizontal Scaling: Scales with more CPU cores or additional nodes, with no significant performance degradation.  
+- Ops-Friendly Deployment: Single self-contained binary (<5MB) for both standalone and clustered modes, with YAML-based configuration for ports, buffers, and maintenance.
+
+--------------------------------------------------------
+DEPLOYMENT GUIDE
+--------------------------------------------------------
+
+INFRASTRUCTURE-AGNOSTIC, PERFORMANCE-FIRST  
+Roomzin is a standalone binary optimized for microsecond-level latency.  
+It runs natively on any infrastructure — from dedicated servers to virtual machines — without external dependencies.  
+For maximum throughput and deterministic performance, deploy Roomzin directly on the host system and avoid additional runtime layers such as containers or orchestration stacks.  
+Your infrastructure, your control.
+
+Download the platform-specific Roomzin binary from support or your distribution channel.
+
+STAND-ALONE  
+Single-node or development environments: just drop the binary next to its config, auth and constants.yml file and run.  
+roomzin run --config /path/to/roomzin.yml
+
+CLUSTERED  
+High-availability production cluster: place the required files (config, auth, constants, *.pem) on each machine and start the same binary as shown below. Nodes auto-discover each other—only a single seed is enough to pull the full peer list, provided the cluster graph stays connected.
+
+Three-node example—shard1, zone1:
+
+Machine 1:  
+roomzin run-clustered --config roomzin.yml --node_id node1 --shard_id shard1 --zone_id zone1 --seed "node1,node2,node3"
+
+Machine 2:  
+roomzin run-clustered --config roomzin.yml --node_id node2 --shard_id shard1 --zone_id zone1 --seed "node1,node2,node3"
+
+Machine 3:  
+roomzin run-clustered --config roomzin.yml --node_id node3 --shard_id shard1 --zone_id zone1 --seed "node1,node2,node3"
+
+ADJUST QUORUM SIZE AFTER EVERY PERMANENT MEMBERSHIP CHANGE  
+Every time you add or remove a node permanently you must manually update the quorum-size through the API (POST /quorum-size). If you forget to do this the cluster can mis-count how many votes constitute a majority and may end up in split-brain (two different leaders elected, data loss or divergence).  
+Treat “scale-up / scale-down” as a two-step operation:
+
+Roomzin adapts to your infrastructure — not the other way around.
+
+--------------------------------------------------------
+BULK LOAD
+--------------------------------------------------------
+
+Bulk Load into an Offline Snapshot  
+Roomzin supports creating snapshots from CSV files to initialize data efficiently. Bulk loading is significantly faster than sending insert queries, with the ability to ingest +1.2 million records per second from CSV files. Use the build-snapshot command to generate snapshots, which are then loaded from the configured snapshot_path at startup.
+
+This is a one-time initialization procedure for a new shard. To minimize the catch-up time with ongoing database updates, perform this load during periods of low traffic. Once this bulk import is complete and the live cluster is synchronizing with the source events, this process does not need to be repeated.
+
+COMMAND  
+roomzin build-snapshot --shard-id <shard_id> --input-path /path/to/csvs --output-path /path/to/snapshot
+
+PARAMETERS  
+--shard-id: Unique shard identifier (e.g. "shard1").  
+--input-path: Directory containing properties.csv and packages.csv.  
+--output-path: Directory to save snapshot files, which should match the snapshot_path in your configuration.
+
+CSV FILE FORMATS  
+properties.csv: Defines properties with their details.  
+PropertyID,Segment,Area,PropertyType,Category,Stars,Latitude,Longitude,Amenities  
+prop_1,segment_1,New York,hotel,test,4,40.713800,-74.005000,wifi|pool|gym|parking
+
+Fields:  
+- PropertyID: UUID string (36 chars) or ASCII text (max 14 chars). Examples: "550e8400-e29b-41d4-a716-446655440000" or "prop_1"  
+- Segment: Primary grouping key for data partitioning and sharding. Choose segments that evenly distribute your properties (e.g. geographic regions, business units, or logical groups). This is a required field in search queries and critically impacts performance.  
+- Area: Secondary grouping for finer data organization within a segment. Use areas to further categorize properties (e.g. neighborhoods, districts) for more targeted searches.  
+- PropertyType: Type (e.g. "hotel").  
+- Category: Category (e.g. "test").  
+- Stars: Star rating (e.g. 4).  
+- Latitude, Longitude: Geographic coordinates.  
+- Amenities: Pipe-separated (|) list of amenities, mapped to the standard set (see Data Format and Limitations).
+
+packages.csv: Defines room types, availability, pricing, and rate-cancellation details for each property.  
+PropertyID,RoomType,Date,Availability,FinalPrice,RateCancel  
+prop_1,room_1,2025-10-03,7,120,free_cancellation|non_refundable|pay_at_property|includes_breakfast
+
+Fields:  
+- PropertyID: Matches a property in properties.csv.  
+- RoomType: Room type identifier (e.g. "room_1"; up to 256 types, recommended <10 for performance).  
+- Date: Date in short string format (e.g. "2025-10-03").  
+- Availability: Number of available rooms (e.g. 7).  
+- FinalPrice: Price for the room on that date (e.g. 120).  
+- RateCancel: Pipe-separated (|) list of rate-cancellation options, mapped to the standard set (see Data Format and Limitations).
+
+After running the command, place the generated snapshot files in the snapshot_path configured in roomzin.yml. Snapshots load quickly at startup, as shown in the benchmarks.
+
+Note: After Roomzin loads the seed snapshot, run one last delta sync to pull in any transactions that arrived while this process was running—use the SDK to stream the missing events.
+
+--------------------------------------------------------
+AUTHENTICATION & RBAC
+--------------------------------------------------------
+
+AUTHENTICATION  
+Roomzin uses token-based authentication with role-based access control (RBAC) for the admin API and certain actions. Tokens are defined in a separate YAML file specified in the server configuration (auth_file).
+
+Sample authentication file (auth.yml):  
+tokens:  
+  - token: abc123  
+    role: admin  
+  - token: c789  
+    role: client  
+  - token: mon456  
+    role: monitoring  
+
+ROLES AND PERMISSIONS  
+- Admin: Full system access to all endpoints and administrative commands (shutdown, update peers, TLS rotation, save snapshot).  
+- Client: Full access to SDK commands (excluding administrative operations: UpdatePeersList, SaveSnapshot, DelSegment, and Shutdown). Includes all Monitoring role permissions.  
+- Monitoring: Read-only access to system status endpoints: /healthz, /metrics, /snapshot-info, /node-info, /leader, and /peers (GET requests only).
+
+All admin API requests require a Bearer token in the Authorization header, e.g. Authorization: Bearer abc123. Invalid or unauthorized tokens return 401 or 403 errors.  
+In clustered mode, tokens can be reloaded without restart via the /reload-tokens endpoint (admin role required).
+
+--------------------------------------------------------
+CONFIGURATION FILE
+--------------------------------------------------------
+
+Roomzin uses a YAML configuration file (roomzin.yml) to define server settings. The file is automatically located in one of these paths (in order of priority):  
+1. Specified via the --config CLI argument.  
+2. Current directory (./roomzin.yml).  
+3. System directory (/etc/roomzin/roomzin.yml).
+
+The configuration includes sections for core allocation, TCP settings, cluster settings, authentication file path, API port, snapshot path, and maintenance hour. Below is a sample configuration with default values explained:
+
+core_config:  
+  cores_sys: 0  # Number of cores dedicated to the system (default: 0; auto-set if not set)  
+  cores_state: 0  # Number of cores dedicated to the state machine processors(default: 0; auto-set if not set)  
+
+tcp:  
+  listen_addr: "127.0.0.1"  # TCP listen address (default: "127.0.0.1")  
+  port: 7777  # TCP port for main service queries (default: 7777)  
+  max_connections: 10000  # Maximum concurrent connections (default: 10000)  
+  tcp_user_timeout_ms: 200  # TCP user timeout in milliseconds (default: 200)  
+  tcp_keepalive_seconds: 30  # TCP keepalive interval in seconds (default: 30)  
+  tcp_recv_buffer_size: 16384  # TCP receive buffer size in bytes  
+  tcp_send_buffer_size: 2097152  # TCP send buffer size in bytes  
+
+cluster:  
+  port: 17777  # Cluster port for node-to-node communication (default: 17777)  
+  quorum_size: 3  # Quorum size for consensus (default: 3)  
+  cert_path: ""  # Path to TLS certificate file (required for clustered mode)  
+  key_path: ""  # Path to TLS private key file (required for clustered mode)  
+  ca_cert_path: ""  # Path to CA certificate file (required for clustered mode)  
+
+auth_file: ""  # Path to authentication YAML file (required)  
+api_port: 0  # HTTP port for admin API (required; e.g. 8080)  
+snapshot_path: ""  # Path to snapshot directory (required; must be writable)  
+maintenance_hour: 0  # Hour (0-23) for scheduled maintenance (default: 0)  
+max_dates_in_query: 14 # max number of dates user can search for  
+query_limit: 300 # max number of records in search results  
+
+Notes:  
+- cores_sys: Number of CPU cores dedicated to system workers. These handle critical tasks and have higher priority to ensure reliability. Assign enough cores to avoid work stealing, context switching, or CPU-bound bottlenecks, which can increase tail latency. The number depends on your dataset size—larger datasets need more cores, but over-allocating beyond what's needed offers little benefit.  
+- cores_state: Number of CPU cores for state machine processors, which handle search and operation processing (the main workload). More cores here improve performance for larger datasets, but only if cores_sys is sufficient. If too many cores are assigned to cores_state and too few to cores_sys, system tasks become a bottleneck, degrading overall performance due to resource contention.  
+- Core configuration allows meaningful performance tuning; defaults to auto-detection based on hardware.  
+- tcp_send_buffer_size: Size of the TCP send buffer (in bytes) for server responses. A low value can bottleneck performance, especially for slow-reading clients (e.g. SDK or custom tools) that don’t read responses from the network quickly. This causes the server to block, increasing tail latency and degrading benchmark results. Set this based on your client’s reading speed and dataset size—larger datasets or slower clients may need a higher value. Test incrementally to avoid wasting memory while ensuring smooth data flow.  
+- The snapshot path must be validated as writable during startup.  
+- For clustered mode, provide valid TLS certificate paths for secure QUIC node-to-node communication. TLS is not enabled on TCP connections, as Roomzin is intended for internal use.
+
+--------------------------------------------------------
+TLS CERTIFICATES
+--------------------------------------------------------
+
+TLS CERTIFICATES  
+Proper TLS certificate configuration is required for secure communication between nodes in cluster. All certificates must be valid X.509 certificates in PEM format.
+
+REQUIRED CERTIFICATE FILES  
+- Server Certificate: Contains the full certificate chain: Leaf certificate (first), Intermediate certificates, Root CA certificate (last)  
+- Private Key: Server's private key: RSA or ECDSA format, PKCS#8 or PKCS#1, Unencrypted/without passphrase  
+- CA Certificate: Trusted Certificate Authority: Root CA certificate, Used for client verification, Must be in PEM format
+
+CERTIFICATE CHAIN REQUIREMENTS  
+The server certificate file must contain the complete chain in the correct order:  
+1. End-entity Certificate – Your server's certificate with proper Subject Alternative Names (SAN)  
+2. Intermediate Certificates – Any intermediate CAs in signing order  
+3. Root CA Certificate – The root certificate authority (optional in chain file)
+
+CERTIFICATE VALIDATION  
+- Subject Requirements: Common Name (CN) must match the hostname, Subject Alternative Names (SAN) must include all hostnames, Certificates must be valid for current date and time  
+- Technical Requirements: Private key must match the certificate, Certificate chain must be properly linked, CA certificate must be trusted for verification
+
+FILE FORMAT SPECIFICATIONS  
+PEM Format Structure:  
+-----BEGIN CERTIFICATE-----  
+MIIE...  
+... certificate data ...  
+-----END CERTIFICATE-----  
+-----BEGIN CERTIFICATE-----  
+MIIE...  
+... intermediate CA ...  
+-----END CERTIFICATE-----  
+
+Private Key Format:  
+# PKCS#8 Private Key  
+-----BEGIN PRIVATE KEY-----  
+MIIE...  
+... key data ...  
+-----END PRIVATE KEY-----  
+# PKCS#1 Private Key  
+-----BEGIN RSA PRIVATE KEY-----  
+MIIE...  
+... key data ...  
+-----END RSA PRIVATE KEY-----  
+
+BEST PRACTICES  
+- Ensure certificates are not expired or nearing expiration  
+- Use certificates from trusted Certificate Authorities  
+- Include all required hostnames in Subject Alternative Names  
+- Keep private keys secure and restrict file permissions  
+- Test certificate chain with OpenSSL before deployment  
+- Monitor certificate expiration dates proactively
+
+COMMON ISSUES  
+- Incomplete Certificate Chain – Missing intermediate certificates in the chain file  
+- Mismatched Private Key – Private key does not correspond to the certificate  
+- Expired Certificates – Certificates are past their validity period
+
+--------------------------------------------------------
+REST API
+--------------------------------------------------------
+
+REST API  
+Roomzin provides a comprehensive HTTP admin API for monitoring and cluster management. All endpoints require Bearer token authentication and return JSON responses unless otherwise specified.
+
+AUTHENTICATION  
+All API requests require Bearer token authentication in the Authorization header:  
+Authorization: Bearer your-token-here  
+Tokens are configured via the authentication system and grant different access levels based on roles.
+
+COMMON ENDPOINTS – AVAILABLE IN BOTH STANDALONE AND CLUSTERED MODES  
+Endpoint /healthz – GET – Node health status  
+Standalone: "active" or "unavailable"  
+Clustered: "active_leader", "active_follower", or "unavailable"  
+Required role: monitoring+  
+Response: Status + Text
+
+Endpoint /metrics – GET – System metrics in Prometheus format  
+Standalone: Filters cluster-specific metrics  
+Clustered: Includes all system metrics  
+Required role: monitoring+  
+Response: Prometheus Text
+
+Endpoint /save-snapshot – POST – Trigger manual snapshot creation  
+Initiates immediate snapshot process. Returns conflict if already in progress.  
+Required role: admin  
+Response: JSON
+
+Endpoint /constants – GET – Retrieve system constants  
+Returns configured amenities and rate-cancellation rules from constants.yml  
+Required role: monitoring+  
+Response: JSON
+
+Endpoint /shutdown – POST – Graceful system shutdown  
+Request Body: {"confirm": true}  
+Must include confirmation flag for safety  
+Required role: admin  
+Response: JSON
+
+CLUSTERED-ONLY ENDPOINTS  
+Endpoint /reload-tokens – POST – Reload authentication tokens  
+Refresh authentication tokens from disk without restart  
+Required role: admin  
+Response: JSON
+
+Endpoint /node-info – GET – Get detailed node information  
+Returns: leader_id, leader_url, shard_id, zone_id, node_id  
+Required role: monitoring+  
+Response: JSON Object
+
+Endpoint /leader – GET – Get current cluster leader  
+Returns URL of the current leader node  
+Required role: monitoring+  
+Response: JSON
+
+Endpoint /tls-rotate – POST – Rotate TLS certificates  
+Signal TLS certificate rotation for node-to-node QUIC communication  
+Required role: admin  
+Response: JSON
+
+Endpoint /snapshot-info – GET – Get snapshot metadata  
+Returns: snapshot_id, term, last_wal_index, producer_node_id, shard_id, zone_id  
+Required role: monitoring+  
+Response: JSON Object
+
+Endpoint /peers – GET – Get cluster peer list  
+Returns array of peer node addresses  
+Required role: monitoring+  
+Response: JSON Array
+
+Endpoint /peers – POST – Update cluster peers  
+Request Body: Array of peer addresses  
+Dynamically updates cluster membership  
+Required role: admin  
+Response: JSON
+
+Endpoint /quorum-size – GET – Get current quorum size  
+Returns the current consensus quorum size  
+Required role: monitoring+  
+Response: JSON
+
+Endpoint /quorum-size – POST – Update quorum size  
+Request Body: {"quorum_size": number}  
+Must be greater than 1. Updates consensus requirements.  
+Required role: admin  
+Response: JSON
+
+USAGE EXAMPLES  
+Basic Health Check:  
+curl -H "Authorization: Bearer your-token" http://localhost:8080/healthz
+
+Get Node Information:  
+curl -H "Authorization: Bearer your-token" http://localhost:8080/node-info
+
+Trigger Snapshot:  
+curl -X POST -H "Authorization: Bearer your-token" http://localhost:8080/save-snapshot
+
+RESPONSE CODES  
+- 200 OK – Request completed successfully  
+- 400 Bad Request – Invalid request parameters or missing confirmation  
+- 401 Unauthorized – Missing or invalid authentication token  
+- 403 Forbidden – Insufficient permissions for the requested endpoint  
+- 409 Conflict – Operation cannot be performed due to current state  
+- 500 Internal Server Error – Server encountered an error processing request  
+- 503 Service Unavailable – Node is not ready to handle requests
+
+--------------------------------------------------------
+METRICS
+--------------------------------------------------------
+
+METRICS OVERVIEW  
+Prometheus Metrics for TCP Server and Cluster
+
+TCP SERVER METRICS  
+- tcp_connections – Active client connections (Gauge)  
+- tcp_commands_total – Total commands processed (Counter)  
+- tcp_bytes_received_total – Total bytes received (Counter)  
+- tcp_bytes_sent_total – Total bytes sent (Counter)  
+- tcp_errors_total – Total server errors (Counter)  
+- tcp_client_errors_total – Total client errors (Counter)  
+- tcp_client_disconnects_total – Total client disconnections (Counter)  
+- tcp_client_login_fail_total – Total failed login attempts (Counter)  
+- tcp_timeouts_total – Total request timeouts (Counter)  
+- tcp_rejected_connections_total – Total rejected connections (Counter)  
+- tcp_rejected_request_total – Total rejected requests (Counter)
+
+CLUSTER METRICS  
+Connection:  
+- cluster_connection_opened_total – Total connections opened (Counter)  
+- cluster_connection_accepted_total – Total connections accepted (Counter)  
+- cluster_connection_rejected_total – Total connections rejected (Counter)  
+- cluster_connection_error_total – Total connection errors (Counter)  
+- cluster_connection_dropped_total – Total connections dropped (Counter)
+
+Request/Response:  
+- cluster_message_sent_total – Total messages sent (Counter)  
+- cluster_message_received_total – Total messages received (Counter)  
+- cluster_bytes_sent_total – Total bytes sent (Counter)  
+- cluster_bytes_received_total – Total bytes received (Counter)  
+- cluster_send_error_total – Total send errors (Counter)  
+- cluster_receive_error_total – Total receive errors (Counter)  
+- cluster_broadcast_timeouts_total – Total broadcast timeouts (Counter)
+
+Condition:  
+- cluster_quorum_lost_count_total – Total quorum losses (Counter)  
+- cluster_leader_failure_count_total – Total leader failures (Counter)  
+- cluster_leader_changed_total – Total leader changes (Counter)  
+- cluster_lagged_behind_leader_total – Total lag events behind leader (Counter)
+
+Snapshot:  
+- cluster_snapshot_produced_total – Total snapshots produced (Counter)  
+- cluster_snapshot_size_bytes – Snapshot size in bytes (Gauge)  
+- cluster_snapshot_save_duration_seconds – Snapshot save duration (Gauge)  
+- cluster_snapshot_load_duration_seconds – Snapshot load duration (Gauge)  
+- cluster_snapshot_failed_count_total – Total snapshot failures (Counter)  
+- cluster_snapshot_transfer_count_total – Total snapshot transfers (Counter)  
+- cluster_snapshot_transfer_duration_seconds – Snapshot transfer duration (Gauge)
+
+Write-Ahead Logging (WAL):  
+- cluster_wal_flush_count_total – Total WAL flushes (Counter)  
+- cluster_delayed_log_count_total – Total delayed logs (Counter)  
+- cluster_rejected_replication_count_total – Total rejected replications (Counter)  
+- cluster_last_applied_wal_index – Last applied WAL index (Gauge)  
+- cluster_pending_wal_records – Pending WAL records (Gauge)  
+- cluster_replicate_failed_count_total – Total replication failures (Counter)  
+- cluster_wal_transfer_count_total – Total WAL transfers (Counter)  
+- cluster_wal_transfer_duration_seconds – WAL transfer duration (Gauge)
+
+--------------------------------------------------------
+COMMANDS & SDKS
+--------------------------------------------------------
+
+COMMANDS  
+Roomzin provides SDKs in Go, Java, Python, and C# for querying and managing the in-memory inventory engine over TCP. SDKs handle automatic routing, failover, load balancing, and connection pooling. Select an SDK from the left menu to view its documentation.
+
+COMMAND CATEGORIES  
+Property Management  
+- Set Property – Adds a new property or updates an existing one in the system
+
+Room Package Management  
+- Set Room Package – Sets availability, price, and cancellation policies for a room type on a date
+
+Availability Management  
+- Set Room Availability – Sets the exact availability for a room type on a specific date  
+- Increment Room Availability – Increases the availability for a room type on a specific date  
+- Decrement Room Availability – Decreases the availability for a room type on a specific date
+
+Search & Query  
+- Search for Availability – Queries the system based on search params like room type, dates, price, etc.  
+- Search Properties – Searches properties by segment, area, type, or other criteria  
+- Property Exists – Checks if a property exists in the system  
+- Room Type Exists – Checks if a specific room type exists for a property  
+- List Room Types – Lists all room types for a given property  
+- List Dates of a Room Type – Lists dates set for one of a given property's room type  
+- Get Room Day Details – Retrieves details for a room type on a specific date  
+- List Segments – Lists all segments and their property counts
+
+Delete Operations  
+- Delete Day for a Room Type – Removes a room's package for a specific date  
+- Delete Day for a Property – Removes all packages of a property on a specific date  
+- Delete a Room Type – Removes a specific room type from a property with all its packages  
+- Delete Property – Removes a property and cascade purges its packages  
+- Delete Segment – Removes a segment with all properties within the segment
+
+System Operations  
+- Save Snapshot – Saves the current system data to a snapshot
+
+VISUAL LEGEND  
+- Property & Package – Purple  
+- Search & Query – Blue  
+- Delete Operations – Red  
+- System Operations – Gray
+
+--------------------------------------------------------
+SDK DOCUMENTATION
+--------------------------------------------------------
+
+GO SDK  
+See the dedicated Go SDK section for installation, configuration (standalone vs clustered), API methods, data types, and copy-paste code samples.
+
+JAVA SDK  
+See the dedicated Java SDK section for Maven setup, configuration builders, async API methods, and data types.
+
+PYTHON SDK  
+See the dedicated Python SDK section for pip install, configuration builders, API methods, and data types.
+
+C# SDK  
+See the dedicated C# SDK section for NuGet install, configuration builders, async API methods, and data types.
+
+--------------------------------------------------------
+BENCHMARKING
+--------------------------------------------------------
+
+BENCHMARK ROOMZIN  
+Measure Roomzin's performance with precision. Benchmark Roomzin under various workloads using the roomzin-bench tool to generate test data, run benchmarks, and measure key metrics like response times and throughput.
+
+QUICK START GUIDE  
+1. Get Benchmark Tool  
+2. Generate Data  
+3. Build Snapshot  
+4. Start Server  
+5. Run Benchmarks
+
+1. GET BENCHMARK TOOL  
+Download the benchmark binary and make it executable:  
+roomzin-bench (download link)  
+chmod +x roomzin-bench
+
+2. GENERATE TEST DATA  
+Create CSV files defining the benchmark dataset:  
+./roomzin-bench generate-csv --num-segments 4 --num-properties 2500 --num-room-types 8 --num-days 30 --output-dir ./csvs
+
+Dataset Options:  
+--num-segments – Market segments (affects query variety)  
+--num-properties – Number of hotels/properties  
+--num-room-types – Room types per property  
+--num-days – Days of availability data
+
+3. BUILD SNAPSHOT  
+Prepare data for the Roomzin server:  
+./roomzin build-snapshot --shard-id 1 --input-path ./csvs --output-path ./snapshots
+
+4. START ROOMZIN SERVER  
+Run in standalone mode for benchmarking:  
+./roomzin run --config ./roomzin.yml
+
+5. RUN BENCHMARKS  
+Benchmark Modes:  
+- Regular Mode – Steady, sustained load testing. Requests are evenly distributed across the benchmark duration.  
+  ./roomzin-bench benchmark regular -t abc123 -c 50 -r 2000 search --num-days 3 --limit 200  
+- Spike Mode – Burst load testing. All requests fire simultaneously to measure tail latency under extreme load.  
+  ./roomzin-bench benchmark spike -t abc123 -c 50 --spike-reqs 2000 search --num-days 3 --limit 200
+
+Key Benchmark Options:  
+-t, --token – Authentication token (required)  
+-c, --connections – Concurrent connections  
+-r, --requests – Total requests (regular mode)  
+--spike-reqs – Burst requests (spike mode)
+
+PERFORMANCE TUNING GUIDE  
+Core Configuration:  
+core_config:  
+  cores_sys: x    # System workers (critical tasks)  
+  cores_state: y  # State machine processors (main workload)  
+
+- cores_sys – Prioritize for resilience and low latency. Insufficient cores cause bottlenecks.  
+- cores_state – Scale with dataset size. Balance with cores_sys to avoid resource contention.
+
+TCP Buffer Tuning:  
+tcp_send_buffer_size: 1048576  # Adjust for client reading speed  
+Increase for slow clients to prevent blocking and reduce tail latency.
+
+COMPLETION  
+Repeat benchmarks with different configurations to optimize performance. Stop the server with Ctrl+C when finished. For dataset-specific tuning guidance, contact your Roomzin representative.
+
+--------------------------------------------------------
+FAQ – FREQUENTLY ASKED QUESTIONS
+--------------------------------------------------------
+
+Q: WHAT IS ROOMZIN?  
+A: Roomzin is a purpose-built, fast and light inventory engine for booking platforms in the travel industry. It's an in-memory state machine optimized for hot intervals (e.g. next 15–60 days), delivering instant searches and updates without replacing existing caches like Redis. It's written in Rust for resilience, low latency, and efficient scaling.
+
+Q: WHO IS ROOMZIN FOR?  
+A: Roomzin is designed for OTAs, hotel chains, wholesalers/aggregators, regional platforms, and hospitality SaaS providers that need lightning-fast searches for availability, prices, and bookings under heavy traffic, without overbookings or high scaling costs.
+
+Q: HOW DOES ROOMZIN DIFFER FROM REDIS OR OTHER GENERIC CACHES?  
+A: Roomzin is travel-native, with a built-in schema for properties, room types, and daily packages, supporting single-query multi-criteria searches in single-digit milliseconds. It offers a 40% smaller RAM footprint, lock-free snapshots, high availability, and zero-ops clustering. Use it alongside Redis for hot-window searches while Redis handles general-purpose caching.
+
+Q: WHAT IS A "HOT WINDOW"?  
+A: A hot window refers to the high-traffic period (e.g. next 15, 30, or 60 days) where most booking searches occur. Roomzin loads and keeps this data mutable in memory for instant queries and updates, while colder data can be handled by your database.
+
+Q: WHAT DATA MODEL DOES ROOMZIN USE?  
+A: Roomzin's data model revolves around three primitives: Property (with segment, area, type, category, stars, geo, amenities), Room Type (sellable units like Standard Double), and Daily Package (date-specific availability, final price, rate & cancellation rules). Data is segmented for parallel processing.
+
+Q: DOES ROOMZIN SUPPORT CLUSTERING AND HIGH AVAILABILITY?  
+A: Yes, Roomzin supports clustered mode with a leader/follower model, Raft-like consensus, auto-join/catch-up, zero-downtime snapshots, and QUIC + TLS for secure node communication. It ensures strong consistency and scales horizontally or vertically. Even with one node in the seeds list, nodes can find each other and update their peers list.
+
+Q: HOW DO I DEPLOY ROOMZIN IN PRODUCTION?  
+A: Deploy the <5MB binary on bare metal or VMs for optimal performance. Use standalone mode for single-node setups or clustered mode for HA. Configure via YAML (ports, auth, snapshots, TLS for clusters). Nodes auto-discover and sync; integrate with tools like Kubernetes or Ansible.
+
+Q: WHAT ARE SNAPSHOTS AND WAL, AND HOW DO THEY WORK?  
+A: Snapshots are binary dumps of in-memory data for fast loading, built offline from CSVs. WAL (write-ahead logging) ensures durability in clusters by logging changes. Maintenance hours trigger automatic snapshots and past-data cleanup.
+
+Q: WHAT AUTHENTICATION ROLES AND SECURITY FEATURES DOES ROOMZIN HAVE?  
+A: Roomzin uses token-based RBAC with roles: admin (full control), client (data operations), monitoring (read-only). TCP uses one-time auth per connection; clusters use QUIC + TLS with auto-rotation. Tokens are reloadable in clusters without restart.
+
+Q: WHAT CONFIGURATION OPTIONS ARE AVAILABLE?  
+A: Key options include core allocation (cores_sys, cores_state for tuning latency/throughput), TCP settings (listen_addr, port, buffers, timeouts), cluster params (node_id, seed, quorum, TLS paths), auth_file, api_port, snapshot_path, and maintenance_hour.
+
+Q: WHAT API ENDPOINTS ARE AVAILABLE?  
+A: HTTP admin API includes /healthz, /metrics, /save-snapshot, /shutdown (common); clustered adds /reload-tokens, /node-info, /leader, /tls-rotate, /snapshot-info, /peers. All require Bearer auth. SDKs handle data operations over TCP.
+
+Q: WHAT METRICS DOES ROOMZIN EXPOSE?  
+A: Prometheus metrics cover TCP (connections, commands, bytes, errors) and clusters (connections, messages, quorum losses, snapshots, WAL flushes/transfers). Standalone filters cluster metrics.
+
+Q: WHICH SDKs ARE SUPPORTED, AND HOW DO THEY WORK?  
+A: SDKs in Go, Java, Python, C# support standalone/clustered modes with auto-routing, failover, pooling. They use a binary protocol for efficiency, handling requests like SetProp, SearchAvail, updates. Config includes hosts, ports, tokens.
+
+Q: HOW DO I BENCHMARK ROOMZIN?  
+A: Use roomzin-bench to generate CSVs, build snapshots, and run regular (steady) or spike (burst) benchmarks for search/update. Tune cores_sys/state and tcp_send_buffer_size for optimal results.
+
+Q: WHAT PERFORMANCE CAN I EXPECT FROM ROOMZIN?  
+A: Single-digit ms median latency at millions of records, <1s snapshots, seconds to reload millions of records, ≤50% RAM of raw data. Consistent under varying loads/connections; scales with cores/nodes.
+
+Q: CAN ROOMZIN HANDLE REAL-TIME UPDATES DURING SEARCHES?  
+A: Yes, Roomzin supports mutable data with lock-free updates and snapshots via decoupled write/read processing queues, ensuring instant searches even under write load in clustered mode.
+
+Q: WHAT ARE SEGMENTS AND AREAS IN THE DATA MODEL?  
+A: Segments are primary partitions (e.g. regions) for sharding and parallel queries. Areas are secondary groupings (e.g. neighborhoods) within segments for targeted searches.
+
+Q: HOW DOES ROOMZIN ENSURE DATA DURABILITY AND RECOVERY?  
+A: Through WAL for logging changes and snapshots for fast recovery. In clusters, followers sync via WAL/snapshots; auto-catch-up on join. Maintenance prunes old data.
+
+Q: IS ROOMZIN SUITABLE FOR NON-TRAVEL USE CASES?  
+A: While optimized for travel (e.g. daily packages, amenities), its in-memory search/update model could adapt to similar inventory systems, but it's not a generic database.
+
+Q: WHAT EXTERNAL DEPENDENCIES DOES ROOMZIN HAVE?  
+A: None—it's a self-contained binary with zero external deps. For clusters, provide TLS certs; SDKs are optional for integration.
+
+--------------------------------------------------------
+TROUBLESHOOTING GUIDE
+--------------------------------------------------------
+
+Q: STARTUP FAILS WITH CONFIG ERROR?  
+A: Check config file paths, snapshot directory writability, and TLS certs for clustered mode. Ensure roomzin.yml is in the correct location (CLI arg, current dir, or /etc/roomzin). Validate YAML syntax and required fields like auth_file, api_port, snapshot_path.
+
+Q: AUTHENTICATION FAILS?  
+A: Verify token in auth.yml and use Bearer header (e.g. Authorization: Bearer abc123). Ensure role matches action (admin for admin ops). Reload tokens via /reload-tokens in clustered mode if changed.
+
+Q: NODE NOT JOINING CLUSTER?  
+A: Ensure seed address, quorum_size, and TLS certs (cert_path, key_path, ca_cert_path) are correct in roomzin.yml. Check logs for QUIC/TLS errors. Verify network connectivity between nodes and correct node_id/shard_id/zone_id.
+
+Q: HIGH LATENCY?  
+A: Tune core_config (increase cores_sys for system tasks, cores_state for queries). Increase segments for better parallelism. Check hardware (more CPU cores/nodes). Adjust tcp_send_buffer_size for slow clients. Refer to benchmarks for expected performance.
+
+Q: SNAPSHOT LOADING OR BUILDING FAILS?  
+A: Ensure snapshot_path is writable and exists. For building, verify CSV formats (properties.csv, packages.csv) match specs (e.g. pipe-separated amenities). Check shard_id consistency. Logs may show invalid dates (past or >365 days ahead) or malformed PropertyID.
+
+Q: WAL SYNC OR REPLICATION ISSUES IN CLUSTER?  
+A: Check metrics for cluster_replicate_failed_count_total or cluster_wal_transfer_duration_seconds. Ensure quorum_size matches node count. Verify TLS cert rotation if expired. Logs may indicate lagged nodes; increase resources or check network latency.
+
+Q: SDK CONNECTION OR REQUEST ERRORS?  
+A: Confirm config (host, ports, token). For clusters, provide seed_hosts and api_port. Check timeouts/keepalive. Ensure role has permissions (client for data ops). Adjust max_active_conns. Logs may show rejected connections due to max_connections limit.
+
+Q: BENCHMARK RESULTS SHOW HIGH TAIL LATENCY OR SLOW RESPONSES?  
+A: Tune cores_sys/state balance (prioritize sys for resilience). Increase tcp_send_buffer_size for large responses/slow readers. Use more segments/properties in CSVs for realism. Check dataset size vs hardware. For spikes, extend duration-secs to capture all responses.
+
+Q: DOCKER-BASED CLUSTER SETUP FAILS (E.G. IN QUICK START)?  
+A: Check container logs (docker logs roomzin-0). Verify sshpass installed. Ensure roomzin-deployment.zip extracted correctly (configs, certs, snapshot). Run make test for healthz/peers. If nodes unavailable, inspect /etc/hosts in containers for IP mappings.
+
+Q: DATA VALIDATION ERRORS (E.G. INVALID AMENITIES OR DATES)?  
+A: Use only predefined amenities/rate_cancel strings (e.g. "wifi", "free_cancellation"). Dates must be YYYY-MM-DD, future, ≤365 days ahead. RoomType ≤256 per property. Check CSVs for pipe-separated lists without extras. SDK calls return errors for invalid payloads.
+
+Q: METRICS NOT EXPOSED OR PROMETHEUS SCRAPING FAILS?  
+A: Ensure api_port configured and accessible. Use monitoring+ token for /metrics. Standalone filters cluster metrics; clustered includes all. Check HTTP errors (401/403 for auth issues).
+
+Q: QUORUM LOST OR LEADER ELECTION ISSUES?  
+A: Monitor cluster_quorum_lost_count_total/leader_changed_total. Ensure odd quorum_size (e.g. 3 for 3 nodes). Check node sync (snapshot/WAL transfers). Increase resources if frequent failures. Update peers list via /peers if nodes added/removed.
+
+Q: MAINTENANCE TASKS NOT RUNNING (E.G. NO AUTO-SNAPSHOTS)?  
+A: Verify maintenance_hour (0-23) in config. Check logs for triggers. Ensure writable snapshot_path. In clusters, leader delegates to follower for zero-downtime.
