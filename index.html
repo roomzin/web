@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/x-icon" href="img/icon-sm.png">
+  <title>Roomzin - Inventory Engine for Booking Platforms</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@300..700&display=swap" rel="stylesheet">
+  <style>
+    b {
+      font-weight: bold !important;
+    }
+  </style>
+</head>
+
+<body>
+  <header class="bg-white">
+    <nav class="container mx-auto px-4 py-4 flex justify-between items-center">
+      <div class="logo text-2xl font-semibold">
+        <img src="img/logo.png" style="float: left;margin-top:10px; width: 200px;" />
+      </div>
+      <div class="space-x-4">
+        <a href="index.html" class="font-semibold hover:text-blue-600">Home</a>
+        <a href="performance.html" class="hover:text-blue-600">Performance</a>
+        <a href="docs.html" class="hover:text-blue-600">Docs</a>
+      </div>
+    </nav>
+  </header>
+
+  <div class="hero bg-blue-600 text-white text-center py-16 hdrdiv">
+    <img src="img/roomzin.png" style="margin: auto;max-width: 800px;padding-bottom: 30px;" />
+
+    <h1 class="text-2xl md:text-3xl font-semibold tracking-tight">
+      Fast and light inventory engine for booking platforms
+    </h1>
+    <br />
+    <p class="mt-4 text-blue-100 text-lg max-w-2xl mx-auto sub-slogan">
+      Purpose-built for travel industry <br />
+      <span class="text-sm text-gray-400">not a generic cache or database</span>
+    </p>
+    <hr />
+    <br />
+  </div>
+
+  <section class="mb-12 bg-white shadow rounded-lg p-6" style="padding: 50px">
+    <h2 class="text-2xl font-semibold mb-4">Story of a Challenge</h2>
+    <p class="text-lg mb-4 sub-title">Complex Booking Search</p>
+    <hr />
+    <br />
+    <p class="text-lg text-gray-600 mb-4 font-semibold">Imagine a user searching for: 2 single rooms in an economy hotel
+      with WiFi, pool, parking, near specific lat/long, pay-at-property, breakfast included, for 3 nights under $120.
+    </p>
+    <p class="text-gray-600 mb-4"
+      style="font-size: 14pt;margin: 20px;background: #5dccff0a;padding: 25px;color: black;text-align: justify;">In a
+      typical
+      setup, you'd face complex
+      cache model designs, multiple round-trips and in-memory joins, sync issues with updates under heavy load and
+      expiries. Switch to a DB? Latencies kill high-TPS performance. Need
+      HA? That's heavy resources, effort, and costs to provision infra and maintain order.</p>
+
+    <br />
+    <p class="text-lg text-gray-600 mb-4 font-semibold"><img src="img/roomzin.png"
+        style="width: 118px; float: left; margin-top: 2px;" />
+      <b>&nbsp;:</b> &nbsp;&nbsp;
+      What if a
+      5MB binary handled it all? HA, simple scaling,
+      travel-native
+      schema, and compound searches in one instant query—out of the box , simple, fast, cost-effective
+    </p>
+    <br />
+    <br />
+    <hr />
+    <p class="text-center text-indigo-800 font-semibold sub-title" style="font-size: 18pt;">
+      If this sounds like the
+      upgrade your team needs, discover
+      Roomzin below.
+    </p>
+    <hr />
+  </section>
+
+  <section class="mb-12 bg-white shadow rounded-lg p-6">
+    <h2 class="text-2xl font-semibold mb-4">About Roomzin</h2>
+    <p class="text-lg mb-4 sub-title">Speed up and simplify your booking platform
+      <span style="color:white; background-color:#e21010 !important; padding: 5px 20px;border-radius: 3px;">for
+        hot window</span>
+    </p>
+    <p class="text-lg text-gray-600 mb-4 font-semibold">Roomzin powers lightning-fast searches for near-term (hot
+      window: weeks
+      to months, based on your traffic), letting your database handle colder queries. It delivers instant, reliable
+      results with a lean engine built for bookings, working alongside Redis or other caches without replacing them.
+
+
+    </p>
+
+    <br />
+
+    <!-- CURRENT CHALLENGES -->
+    <div class="grid md:grid-cols-4 gap-4 text-center">
+      <div>
+        <p class="mb-2 font-medium font-semibold text-gray-600 mb-3" style="padding-top: 12%;">Why platforms struggle
+        </p>
+      </div>
+      <div
+        class="bg-red-25/50 border border-red-200/60 rounded-lg p-3 backdrop-blur-sm shadow-sm hover:shadow-md hover:-translate-y-px transition-all duration-300">
+        <p class="font-semibold text-red-700/90">Complex systems</p>
+        <p class="text-sm text-red-600/80">Slow searches due to multiple queries</p>
+      </div>
+      <div
+        class="bg-red-25/50 border border-red-200/60 rounded-lg p-3 backdrop-blur-sm shadow-sm hover:shadow-md hover:-translate-y-px transition-all duration-300">
+        <p class="font-semibold text-red-700/90">Scaling costs</p>
+        <p class="text-sm text-red-600/80">High resource use and slow updates</p>
+      </div>
+      <div
+        class="bg-red-25/50 border border-red-200/60 rounded-lg p-3 backdrop-blur-sm shadow-sm hover:shadow-md hover:-translate-y-px transition-all duration-300">
+        <p class="font-semibold text-red-700/90">Unreliable availability</p>
+        <p class="text-sm text-red-600/80">Overbookings under heavy traffic</p>
+      </div>
+    </div>
+    <br />
+
+    <!-- DOWN ARROW -->
+    <div class="flex justify-center my-2">
+      <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
+      </svg>
+    </div>
+
+    <br />
+    <!-- ROOMZIN SOLUTION -->
+    <p class="font-medium font-semibold text-gray-600 mb-3"><img src="img/icon.png" class="rzicon" /> How Roomzin solves
+      it</p>
+    <div class="from-indigo-50 via-white to-sky-50 border border-indigo-200 rounded-xl p-5">
+      <p class="text-indigo-800 font-semibold mb-3">Instant searches, fresh inventory, effortless scaling</p>
+      <div class="grid md:grid-cols-2 gap-4 mb-4">
+        <div class="flex items-start gap-3">
+          <span class="text-indigo-500 mt-1">▸</span>
+          <div>
+            <p class="font-semibold text-indigo-900" style="border-bottom: 1px solid #ccc;margin-bottom: 10px;">One RAM
+              image with HA</p>
+            <p class="text-sm">Compact, holds millions of room/days</p>
+          </div>
+        </div>
+        <div class="flex items-start gap-3">
+          <span class="text-indigo-500 mt-1">▸</span>
+          <div>
+            <p class="font-semibold text-indigo-900" style="border-bottom: 1px solid #ccc;margin-bottom: 10px;">Single
+              round-trip query</p>
+            <p class="text-sm">No joins, no tuning, just speed</p>
+          </div>
+        </div>
+      </div>
+    </div>
+    <br />
+    <p class="text-center text-indigo-800 font-semibold">
+      One engine, one query, unbeatable speed
+    </p>
+    <p class="text-sm text-center mt-4" style="padding: 0;margin-top: 0;"><a href="docs.html"
+        class="text-blue-600 hover:underline">Explore how Roomzin
+        boosts your platform</a></p>
+    <br />
+    <p>Roomzin combines <span style="color: #082758;font-size: 14pt;font-style: italic;">deterministic speed,
+        resilience, and operational ease</span>, making it
+      a strong candidate for <span style="color: #082758;font-size: 14pt;font-style: italic;">powering
+        the hot-path availability service</span>, while the existing databases continue to serve cold-path and
+      analytical
+      workloads.</p>
+  </section>
+
+  <!-- ==========  Roomzin Flow – Drop-in Upgrade  ========== -->
+  <section class="mb-12 bg-white shadow rounded-2xl p-8">
+    <!-- header -->
+    <h2 class="text-2xl font-semibold mb-4" style="margin-top: -30px;">How Roomzin Fits In </h2>
+    <hr />
+    <p class="text-lg text-gray-600 mb-4 font-semibold" style="line-height: 2em;">
+      Roomzin supercharges hot-window searches with a single, complex query, while <br />
+      your existing cache (e.g., Redis) handles detailed property info as before.
+    </p>
+    <br />
+
+    <!-- FIXED TIMELINE -->
+    <div class="relative max-w-2xl mx-auto">
+      <!-- centred guiding line -->
+      <div class="absolute left-1/2 -translate-x-1/2 top-0 h-full w-0.5 bg-gray-200"></div>
+
+      <!-- step 1 -->
+      <div class="flex items-center mb-10">
+        <div class="w-1/2 pr-4 text-right">
+          <div
+            class="inline-block w-full max-w-sm bg-gray-50 border border-gray-200 rounded-xl px-5 py-4 shadow-sm text-left">
+            <p class="text-sm text-gray-800">
+              <span class="font-semibold">Platform sends complex query</span>
+            </p>
+          </div>
+        </div>
+        <div class="relative z-10 -mx-5">
+          <div class="w-10 h-10 rounded-full bg-gray-500 text-white grid place-items-center font-bold shadow-lg">1</div>
+        </div>
+        <div class="w-1/2 pl-4"></div>
+      </div>
+
+      <!-- step 2 -->
+      <div class="flex items-center mb-10">
+        <div class="w-1/2 pr-4"></div>
+        <div class="relative z-10 -mx-5">
+          <div class="w-10 h-10 rounded-full bg-indigo-500 text-white grid place-items-center font-bold shadow-lg">
+            2
+          </div>
+        </div>
+        <div class="w-1/2 pl-4 text-left">
+          <div
+            class="inline-block w-full max-w-sm bg-indigo-50 border border-indigo-200 rounded-xl px-5 py-4 shadow-sm text-left"
+            style="background: aliceblue;">
+            <img src="img/icon.png" style="max-width: 50px;float: left; margin-right: 10px;" /> <span
+              class="font-semibold" style="
+    color: #27297b;
+">Roomzin returns every matching property ID, with nightly room details for the
+              entire stay</span><br>
+            <hr style="background-color: #093358;color: antiquewhite;height: 3px; margin: 5px 0;" />
+            from a single, fast query
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- step 3 -->
+      <div class="flex items-center">
+        <div class="w-1/2 pr-4 text-right">
+          <div
+            class="inline-block w-full max-w-sm bg-gray-50 border border-gray-200 rounded-xl px-5 py-4 shadow-sm text-left">
+            <p class="text-sm text-gray-800" style="line-height: 2em;">
+              <span class="font-semibold">Platform queries cache (e.g., Redis)</span><br>
+              for detailed property info using Roomzin’s IDs
+            </p>
+          </div>
+        </div>
+        <div class="relative z-10 -mx-5">
+          <div class="w-10 h-10 rounded-full bg-gray-500 text-white grid place-items-center font-bold shadow-lg">3</div>
+        </div>
+        <div class="w-1/2 pl-4"></div>
+      </div>
+    </div>
+
+    <!-- divider -->
+    <hr class="my-10 border-gray-200">
+
+    <!-- capability checklist -->
+    <p class="text-lg font-semibold text-gray-700 mb-4">Built for travel & hospitality that need:</p>
+    <div class="grid md:grid-cols-2 gap-x-8 gap-y-2 text-gray-600 mb-6">
+      <label class="text-lg flex items-center gap-2"><span class="text-green-500">✓</span> Fast search with all filters
+        in one
+        query</label>
+      <label class="text-lg flex items-center gap-2"><span class="text-green-500">✓</span> Performance under massive
+        traffic</label>
+      <label class="text-lg flex items-center gap-2"><span class="text-green-500">✓</span> High Availability</label>
+      <label class="text-lg flex items-center gap-2"><span class="text-green-500">✓</span> Minimal resource
+        consumption</label>
+    </div>
+
+    <!-- footer badge -->
+    <div class="inline-flex items-center gap-2 bg-gray-100 px-3 py-1 rounded-full text-sm text-gray-700">
+      <span class="w-2 h-2 bg-green-500 rounded-full"></span>
+      Everything works out of the box — small binary &lt; 5 MB
+    </div>
+    <p class="mt-3 text-sm text-gray-600">
+      <b>One binary, zero schema headaches:</b> Drop in, load your CSV, and serve hot searches and live updates
+      immediately.
+    </p>
+  </section>
+
+  <section class="mb-12 bg-white"
+    style="border: none !important;padding-bottom: 0 !important;margin-bottom: 0 !important;">
+    <h2 class="text-2xl font-semibold mb-4">Performance Highlights
+    </h2>
+    <hr />
+  </section>
+  <section class="mb-12 bg-white shadow rounded-lg p-6 grid grid-cols-1 lg:grid-cols-4 gap-6">
+
+    <!-- LEFT column – “Powered by Rust” only -->
+    <div class="lg:col-span-1 flex items-start">
+      <h2 class="text-xl font-semibold">
+        <span><img src="img/rust.svg" style="float:left; margin-right:6px; width: 40px;" /></span>
+        <span style="float: left; padding-top: 6px;">Powered by Rust</span>
+      </h2>
+    </div>
+
+    <!-- RIGHT column – everything else -->
+    <div class="lg:col-span-3">
+      <!-- PERFORMANCE HIGHLIGHTS – achievement cards -->
+      <ul class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 list-none pl-0">
+        <!-- card 1 -->
+        <li class="relative bg-gradient-to-br from-emerald-50 to-emerald-100 border border-emerald-200 rounded-xl p-5
+                 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300">
+          <span class="absolute -top-3 -left-3 w-8 h-8 bg-emerald-500 text-white
+                     rounded-full flex items-center justify-center text-xs font-bold shadow">1</span>
+          <p class="text-emerald-900 font-semibold">Resilient and predictable</p>
+          <p class="text-emerald-700 text-sm mt-1">under any mix of connections, traffic patterns, or data volumes</p>
+        </li>
+
+        <!-- card 2 -->
+        <li class="relative bg-gradient-to-br from-sky-50 to-sky-100 border border-sky-200 rounded-xl p-5
+                 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300">
+          <span class="absolute -top-3 -left-3 w-8 h-8 bg-sky-500 text-white
+                     rounded-full flex items-center justify-center text-xs font-bold shadow">2</span>
+          <p class="text-sky-900 font-semibold">Single-digit-millisecond median latency</p>
+          <p class="text-sky-700 text-sm mt-1">at millions-record scale</p>
+        </li>
+
+        <!-- card 3 -->
+        <li class="relative bg-gradient-to-br from-violet-50 to-violet-100 border border-violet-200 rounded-xl p-5
+                 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300">
+          <span class="absolute -top-3 -left-3 w-8 h-8 bg-violet-500 text-white
+                     rounded-full flex items-center justify-center text-xs font-bold shadow">3</span>
+          <p class="text-violet-900 font-semibold">Lightning snapshots</p>
+          <p class="text-violet-700 text-sm mt-1">&lt;1 s for millions of records</p>
+        </li>
+
+        <!-- card 4 -->
+        <li class="relative bg-gradient-to-br from-amber-50 to-amber-100 border border-amber-200 rounded-xl p-5
+                 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300">
+          <span class="absolute -top-3 -left-3 w-8 h-8 bg-amber-500 text-white
+                     rounded-full flex items-center justify-center text-xs font-bold shadow">4</span>
+          <p class="text-amber-900 font-semibold">Instant reload</p>
+          <p class="text-amber-700 text-sm mt-1">millions of records in second(s)</p>
+        </li>
+
+        <!-- card 5 -->
+        <li class="relative bg-gradient-to-br from-rose-50 to-rose-100 border border-rose-200 rounded-xl p-5
+                 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 sm:col-span-2 lg:col-span-1">
+          <span class="absolute -top-3 -left-3 w-8 h-8 bg-rose-500 text-white
+                     rounded-full flex items-center justify-center text-xs font-bold shadow">5</span>
+          <p class="text-rose-900 font-semibold">Lean memory</p>
+          <p class="text-rose-700 text-sm mt-1">≤ 50 % of raw data size</p>
+        </li>
+      </ul>
+
+      <br />
+      <a href="performance.html" class="btn-orng">See Benchmarks</a>
+    </div>
+  </section>
+
+  <section class="mb-12 bg-white shadow rounded-lg p-6">
+    <h2 class="text-2xl font-semibold mb-4">Key Capabilities</h2>
+    <p class="text-lg mb-4 sub-title">Built for booking-scale workloads</p>
+    <hr class="border-gray-300 mb-4" />
+    <!-- KEY CAPABILITIES – feature badges -->
+    <ul class="flex flex-wrap gap-3 list-none pl-0">
+      <!-- badge 1 -->
+      <li class="inline-flex items-center gap-2
+             bg-gradient-to-r from-indigo-50 to-indigo-100 border border-indigo-200
+             rounded-full px-4 py-2 shadow-sm
+             hover:shadow-md hover:-translate-y-0.5 transition-all duration-300">
+        <span class="shrink-0 w-6 h-6 bg-indigo-500 text-white
+                 rounded-full flex items-center justify-center text-[10px] font-bold">1</span>
+        <span class="text-indigo-900 font-semibold text-sm">Any topology</span>
+        <span class="text-indigo-700 text-xs">: single node → clustered</span>
+      </li>
+
+      <!-- badge 2 -->
+      <li class="inline-flex items-center gap-2
+             bg-gradient-to-r from-emerald-50 to-emerald-100 border border-emerald-200
+             rounded-full px-4 py-2 shadow-sm
+             hover:shadow-md hover:-translate-y-0.5 transition-all duration-300">
+        <span class="shrink-0 w-6 h-6 bg-emerald-500 text-white
+                 rounded-full flex items-center justify-center text-[10px] font-bold">2</span>
+        <span class="text-emerald-900 font-semibold text-sm">HA</span>
+        <span class="text-emerald-700 text-xs">: leader/follower, WAL & snaps</span>
+      </li>
+
+      <!-- badge 3 -->
+      <li class="inline-flex items-center gap-2
+             bg-gradient-to-r from-sky-50 to-sky-100 border border-sky-200
+             rounded-full px-4 py-2 shadow-sm
+             hover:shadow-md hover:-translate-y-0.5 transition-all duration-300">
+        <span class="shrink-0 w-6 h-6 bg-sky-500 text-white
+                 rounded-full flex items-center justify-center text-[10px] font-bold">3</span>
+        <span class="text-sky-900 font-semibold text-sm">Zero-ops</span>
+        <span class="text-sky-700 text-xs">: auto-discovery, join, catch-up</span>
+      </li>
+
+      <!-- badge 4 -->
+      <li class="inline-flex items-center gap-2
+             bg-gradient-to-r from-violet-50 to-violet-100 border border-violet-200
+             rounded-full px-4 py-2 shadow-sm
+             hover:shadow-md hover:-translate-y-0.5 transition-all duration-300">
+        <span class="shrink-0 w-6 h-6 bg-violet-500 text-white
+                 rounded-full flex items-center justify-center text-[10px] font-bold">4</span>
+        <span class="text-violet-900 font-semibold text-sm">Secure wire</span>
+        <span class="text-violet-700 text-xs">: QUIC + TLS auto-rotate</span>
+      </li>
+
+      <!-- badge 5 -->
+      <li class="inline-flex items-center gap-2
+             bg-gradient-to-r from-amber-50 to-amber-100 border border-amber-200
+             rounded-full px-4 py-2 shadow-sm
+             hover:shadow-md hover:-translate-y-0.5 transition-all duration-300">
+        <span class="shrink-0 w-6 h-6 bg-amber-500 text-white
+                 rounded-full flex items-center justify-center text-[10px] font-bold">5</span>
+        <span class="text-amber-900 font-semibold text-sm">RBAC</span>
+        <span class="text-amber-700 text-xs"> & realtime metrics</span>
+      </li>
+
+      <!-- badge 6 -->
+      <li class="inline-flex items-center gap-2
+             bg-gradient-to-r from-teal-50 to-teal-100 border border-teal-200
+             rounded-full px-4 py-2 shadow-sm
+             hover:shadow-md hover:-translate-y-0.5 transition-all duration-300">
+        <span class="shrink-0 w-6 h-6 bg-teal-500 text-white
+                 rounded-full flex items-center justify-center text-[10px] font-bold">6</span>
+        <span class="text-teal-900 font-semibold text-sm">Partitioned data</span>
+        <span class="text-teal-700 text-xs"> for parallel speed</span>
+      </li>
+
+      <!-- badge 7 -->
+      <li class="inline-flex items-center gap-2
+             bg-gradient-to-r from-rose-50 to-rose-100 border border-rose-200
+             rounded-full px-4 py-2 shadow-sm
+             hover:shadow-md hover:-translate-y-0.5 transition-all duration-300">
+        <span class="shrink-0 w-6 h-6 bg-rose-500 text-white
+                 rounded-full flex items-center justify-center text-[10px] font-bold">7</span>
+        <span class="text-rose-900 font-semibold text-sm">Hot snapshots</span>
+        <span class="text-rose-700 text-xs"> under load in cluster mode</span>
+      </li>
+
+      <!-- badge 8 -->
+      <li class="inline-flex items-center gap-2
+             bg-gradient-to-r from-slate-50 to-slate-100 border border-slate-200
+             rounded-full px-4 py-2 shadow-sm
+             hover:shadow-md hover:-translate-y-0.5 transition-all duration-300">
+        <span class="shrink-0 w-6 h-6 bg-slate-500 text-white
+                 rounded-full flex items-center justify-center text-[10px] font-bold">8</span>
+        <span class="text-slate-900 font-semibold text-sm">Smart SDKs</span>
+        <span class="text-slate-700 text-xs">: Java, Go, Python, C#, Node.js</span>
+      </li>
+    </ul>
+  </section>
+
+
+  <section class="mb-12 bg-white shadow rounded-lg p-6">
+    <h2 class="text-2xl font-semibold mb-4">Easy Integration</h2>
+
+    <div class="grid md:grid-cols-3 gap-4 mb-4">
+      <div>
+        <p class="font-semibold">SDKs</p>
+        <ul class="list-disc pl-6 text-sm space-y-1">
+          <li>Auto-route, failover, retry</li>
+          <li>Built-in load-bal & pool</li>
+          <li>One-liner: Java, Go, Python, C#, Node.js</li>
+        </ul>
+      </div>
+
+      <div>
+        <p class="font-semibold">Deployment</p>
+        <ul class="list-disc pl-6 text-sm space-y-1">
+          <li>&lt;5 MB binary</li>
+          <li>Zero external deps</li>
+        </ul>
+      </div>
+
+      <div>
+        <p class="font-semibold">Load from DB</p>
+        <ul class="list-disc pl-6 text-sm space-y-1">
+          <li>CSV seed</li>
+          <li>+1.2 M records/sec offline</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!--  Roomzin + Redis: better together  -->
+  <section class="mb-12 bg-white shadow rounded-xl p-8">
+    <h2 class="text-2xl font-semibold mb-4">Will Roomzin replace Redis?</h2>
+    <p class="text-lg text-emerald-700 mb-4 font-semibold">No — and it’s not meant to.</p>
+
+    <!-- visual pairing -->
+    <div class="grid md:grid-cols-2 gap-6 items-start">
+      <!-- Redis card -->
+      <div class="p-5">
+        <p class="font-semibold text-gray-800 mb-2">Redis keeps doing…</p>
+        <ul class="list-disc pl-6 text-sm space-y-1 text-gray-700">
+          <li>General-purpose key/value caching</li>
+          <li>Everything you already rely on it for except what is covered by Roomzin now</li>
+        </ul>
+      </div>
+
+      <!-- Roomzin card -->
+      <div class="p-5">
+        <p class="font-semibold text-indigo-900 mb-2">Roomzin adds…</p>
+        <ul class="list-disc pl-6 text-sm space-y-1 text-indigo-800">
+          <li>Travel-native schema</li>
+          <li>Simpler searches</li>
+          <li>Faster responses</li>
+          <li>Built-in HA</li>
+          <li>Simpler scaling</li>
+          <li>Auto persistence</li>
+          <li>Lower resource needs</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- bottom line -->
+    <div class="mt-6 bg-emerald-50 border border-emerald-200 rounded-xl p-4 text-center">
+      <p class="text-emerald-900 font-semibold">
+        Keep Redis for everything else; slide Roomzin beside it for booking-speed workloads.
+      </p>
+      <p class="text-sm text-emerald-700 mt-1">Zero rip-and-replace — just faster revenue.</p>
+    </div>
+  </section>
+
+
+  <section class="mb-12 bg-white shadow rounded-lg p-6">
+    <h2 class="text-2xl font-semibold mb-4">Who It’s For</h2>
+    <p class="text-lg mb-4 sub-title">Booking speed = revenue</p>
+    <hr class="border-gray-300 mb-4" />
+    <ul class="list-disc pl-6 space-y-1">
+      <li>OTAs & hotel chains</li>
+      <li>Wholesalers / aggregators</li>
+      <li>Regional platforms & hospitality SaaS</li>
+    </ul>
+  </section>
+
+  <section class="mb-12 bg-blue-600 text-white text-center py-8 rounded-lg">
+    <h2 class="text-2xl font-semibold mb-4">Ready to supercharge your booking platform?</h2>
+    <p style="color: #093358;">Roomzin delivers <b>speed, scale, and simplicity</b> — purpose-built for the travel
+      industry.</p>
+    <a href="docs.html" class="inline-block bg-white text-blue-600 px-4 py-2 rounded hover:bg-gray-100">Get
+      Started</a>
+  </section>
+  </div>
+
+  <footer class="bg-gray-800 text-white text-center py-4">
+    <p>&copy; 2025 Roomzin. All rights reserved.</p>
+
+    <a href="https://www.linkedin.com/in/mehdi-javani/" target="_blank" rel="noopener noreferrer"
+      class="inline-block mt-2 hover:text-blue-400 transition">
+      <!-- CONTACT ICON -->
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 inline align-text-bottom" fill="none" viewBox="0 0 24 24"
+        stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+          d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+      </svg>
+      <span class="ml-2">Contact</span>
+    </a>
+  </footer>
+
+</body>
+
+</html>
