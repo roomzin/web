@@ -1,0 +1,1144 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/x-icon" href="img/icon-sm.png">
+    <title>Technical Deep Dive – Roomzin</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        section {
+            border-radius: 0 !important;
+            padding-bottom: 20px !important;
+        }
+    </style>
+</head>
+
+<body>
+    <header class="bg-white">
+        <nav class="container mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="logo text-2xl font-semibold">
+                <img src="img/logo.png" style="margin: auto; width: 150px;" />
+            </div>
+            <div class="space-x-4">
+                <a href="index.html" class="hover:text-blue-600">Home</a>
+                <a href="architecture.html" class="font-semibold hover:text-blue-600">Architecture</a>
+                <a href="benchmarks.html" class="hover:text-blue-600">Benchmarks</a>
+                <a href="docs.html" class="hover:text-blue-600">Docs</a>
+            </div>
+        </nav>
+    </header>
+
+    <div class="bg-gradient-to-r from-blue-900 to-indigo-800 text-white text-center py-16">
+        <h1 class="text-4xl font-bold mb-4">Technical Deep Dive</h1>
+        <p class="text-xl text-blue-200 max-w-3xl mx-auto">
+            How Roomzin achieves sub-millisecond searches at scale—without magic
+        </p>
+    </div>
+
+    <div class="container mx-auto px-4 py-12 max-w-6xl">
+        <!-- Introduction -->
+        <section class="mb-16">
+            <div class="text-center mb-10">
+                <h2 class="text-3xl font-bold text-gray-800 mb-4">The Engineering Behind the Speed</h2>
+                <p class="text-lg text-gray-600">
+                    Roomzin's speed stems from a unique combination:
+                </p>
+                <p class="text-lg text-gray-600">
+                    <span
+                        class="font-extrabold bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">innovative
+                        architectural patterns</span>,
+                    <span
+                        class="font-extrabold bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">intentional
+                        trade-offs</span>,
+                    and a <span
+                        class="font-extrabold bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">domain-specific
+                        design</span>.
+                </p>
+                <p class="text-lg text-gray-600">
+                    Unlike generic systems, it's built exclusively for booking platforms—eliminating
+                    unnecessary complexity while optimizing for real-world performance.
+                </p>
+            </div>
+        </section>
+
+        <!-- Core Innovations -->
+        <section class="py-12 px-4 max-w-7xl mx-auto">
+            <div class="mb-12">
+                <h2 class="text-3xl font-bold text-gray-900 mb-3">Core Architectural Innovations</h2>
+                <p class="text-lg text-gray-600">High-performance patterns enabling microsecond response times</p>
+            </div>
+
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Column 1 -->
+                <div class="space-y-6">
+                    <!-- 1. Fixed Schema Encoding -->
+                    <div
+                        class="bg-white p-5 rounded-lg border border-gray-100 shadow-sm hover:shadow-md transition-shadow duration-200">
+                        <div class="mb-4">
+                            <div
+                                class="inline-flex items-center px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-sm font-semibold mb-3">
+                                <span class="w-2 h-2 bg-blue-500 rounded-full mr-2"></span>
+                                PERFORMANCE
+                            </div>
+                            <h3 class="text-lg font-semibold text-gray-900 mb-2">Fixed Schema = Bitmap Magic</h3>
+                            <p class="text-gray-700 mb-3 text-sm leading-relaxed">
+                                By limiting amenities to 32 and cancellation rules to 8, we encode them as <code
+                                    class="font-mono bg-gray-100 px-1 py-0.5 rounded text-sm">u32</code> and <code
+                                    class="font-mono bg-gray-100 px-1 py-0.5 rounded text-sm">u8</code> bitmasks.
+                            </p>
+                        </div>
+                        <div class="pt-3 border-t border-gray-100">
+                            <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Impact</h4>
+                            <ul class="space-y-2">
+                                <li class="flex items-start">
+                                    <svg class="w-4 h-4 text-blue-500 mt-0.5 mr-2 flex-shrink-0" fill="currentColor"
+                                        viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd"
+                                            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                            clip-rule="evenodd" />
+                                    </svg>
+                                    <span class="text-sm text-gray-700">Amenity filtering = <code
+                                            class="font-mono text-blue-900">bitwise AND</code> (single CPU cycle)</span>
+                                </li>
+                                <li class="flex items-start">
+                                    <svg class="w-4 h-4 text-blue-500 mt-0.5 mr-2 flex-shrink-0" fill="currentColor"
+                                        viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd"
+                                            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                            clip-rule="evenodd" />
+                                    </svg>
+                                    <span class="text-sm text-gray-700">No string comparisons or hash lookups</span>
+                                </li>
+                                <li class="flex items-start">
+                                    <svg class="w-4 h-4 text-blue-500 mt-0.5 mr-2 flex-shrink-0" fill="currentColor"
+                                        viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd"
+                                            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                            clip-rule="evenodd" />
+                                    </svg>
+                                    <span class="text-sm text-gray-700">SIMD-able for multiple properties at once</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- 2. String-to-Number Optimization -->
+                    <div
+                        class="bg-white p-5 rounded-lg border border-gray-100 shadow-sm hover:shadow-md transition-shadow duration-200">
+                        <div class="mb-4">
+                            <div
+                                class="inline-flex items-center px-3 py-1 rounded-full bg-green-50 text-green-700 text-sm font-semibold mb-3">
+                                <span class="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
+                                MEMORY
+                            </div>
+                            <h3 class="text-lg font-semibold text-gray-900 mb-2">String Elimination</h3>
+                            <p class="text-gray-700 mb-3 text-sm leading-relaxed">
+                                All strings are converted to numeric IDs at ingest time:
+                            </p>
+                        </div>
+                        <div class="space-y-2 mb-4">
+                            <div class="flex justify-between items-center bg-gray-50 p-3 rounded-lg">
+                                <span class="text-gray-700">"pool"</span>
+                                <div class="flex items-center">
+                                    <span class="text-gray-400 mr-2">→</span>
+                                    <code class="font-mono font-semibold text-gray-900">bit position 2</code>
+                                </div>
+                            </div>
+                            <div class="flex justify-between items-center bg-gray-50 p-3 rounded-lg">
+                                <span class="text-gray-700">"Hilton"</span>
+                                <div class="flex items-center">
+                                    <span class="text-gray-400 mr-2">→</span>
+                                    <code class="font-mono font-semibold text-gray-900">16-bit ID: 142</code>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 3. H3 Geospatial Indexing -->
+                    <div
+                        class="bg-white p-5 rounded-lg border border-gray-100 shadow-sm hover:shadow-md transition-shadow duration-200">
+                        <div class="mb-4">
+                            <div
+                                class="inline-flex items-center px-3 py-1 rounded-full bg-purple-50 text-purple-700 text-sm font-semibold mb-3">
+                                <span class="w-2 h-2 bg-purple-500 rounded-full mr-2"></span>
+                                GEOSPATIAL
+                            </div>
+                            <h3 class="text-lg font-semibold text-gray-900 mb-2">H3 Hexagonal Grid Search</h3>
+                            <p class="text-gray-700 mb-3 text-sm leading-relaxed">
+                                Uses Uber's H3 library for O(1) radius searches instead of O(log n) R-tree lookups.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Column 2 -->
+                <div class="space-y-6">
+                    <!-- 4. Segment-Based Parallelism -->
+                    <div
+                        class="bg-white p-5 rounded-lg border border-gray-100 shadow-sm hover:shadow-md transition-shadow duration-200">
+                        <div class="mb-4">
+                            <div
+                                class="inline-flex items-center px-3 py-1 rounded-full bg-orange-50 text-orange-700 text-sm font-semibold mb-3">
+                                <span class="w-2 h-2 bg-orange-500 rounded-full mr-2"></span>
+                                PARALLELISM
+                            </div>
+                            <h3 class="text-lg font-semibold text-gray-900 mb-2">Segment-Based Parallelism</h3>
+                            <p class="text-gray-700 mb-3 text-sm leading-relaxed">
+                                Data is partitioned into segments (e.g., "paris_north", "paris_south") that operate
+                                independently.
+                            </p>
+                        </div>
+                        <div class="space-y-3">
+                            <div class="flex items-start">
+                                <div class="w-2 h-2 bg-orange-500 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                                <p class="text-sm text-gray-700">Each segment has its own processing queue</p>
+                            </div>
+                            <div class="flex items-start">
+                                <div class="w-2 h-2 bg-orange-500 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                                <p class="text-sm text-gray-700">Paris' 1,800 hotels → 5 segments = 5x CPU utilization
+                                </p>
+                            </div>
+                            <div class="flex items-start">
+                                <div class="w-2 h-2 bg-orange-500 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                                <p class="text-sm text-gray-700">No cross-segment locking or coordination</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 5. Write Priority Streams -->
+                    <div
+                        class="bg-white p-5 rounded-lg border border-gray-100 shadow-sm hover:shadow-md transition-shadow duration-200">
+                        <div class="mb-4">
+                            <div
+                                class="inline-flex items-center px-3 py-1 rounded-full bg-red-50 text-red-700 text-sm font-semibold mb-3">
+                                <span class="w-2 h-2 bg-red-500 rounded-full mr-2"></span>
+                                QUEUING
+                            </div>
+                            <h3 class="text-lg font-semibold text-gray-900 mb-2">Write Priority Streams</h3>
+                            <p class="text-gray-700 mb-3 text-sm leading-relaxed">
+                                Decoupled read and write channels with priority queuing ensure writes never starve.
+                            </p>
+                        </div>
+                        <div class="space-y-3 mb-4">
+                            <div class="flex items-center justify-between bg-red-50 p-3 rounded-lg">
+                                <div class="flex items-center">
+                                    <div class="w-3 h-3 bg-red-500 rounded-full mr-3"></div>
+                                    <span class="font-medium text-red-800">Write Channel</span>
+                                </div>
+                                <span
+                                    class="px-2 py-1 bg-red-100 text-red-800 text-xs font-medium rounded-full">Priority
+                                    Queue</span>
+                            </div>
+                            <div class="flex items-center justify-between bg-blue-50 p-3 rounded-lg">
+                                <div class="flex items-center">
+                                    <div class="w-3 h-3 bg-blue-500 rounded-full mr-3"></div>
+                                    <span class="font-medium text-blue-800">Read Channels</span>
+                                </div>
+                                <span
+                                    class="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-full">Best-Effort</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 6. QUIC Protocol -->
+                    <div
+                        class="bg-white p-5 rounded-lg border border-gray-100 shadow-sm hover:shadow-md transition-shadow duration-200">
+                        <div class="mb-4">
+                            <div
+                                class="inline-flex items-center px-3 py-1 rounded-full bg-indigo-50 text-indigo-700 text-sm font-semibold mb-3">
+                                <span class="w-2 h-2 bg-indigo-500 rounded-full mr-2"></span>
+                                NETWORK
+                            </div>
+                            <h3 class="text-lg font-semibold text-gray-900 mb-2">QUIC Protocol Layer</h3>
+                            <p class="text-gray-700 mb-3 text-sm leading-relaxed">
+                                Modern transport protocol replacing TCP for secure, multiplexed node-to-node
+                                communication.
+                            </p>
+                        </div>
+                        <div class="space-y-2 mb-4">
+                            <div class="flex items-center">
+                                <div class="w-2 h-2 bg-indigo-500 rounded-full mr-3"></div>
+                                <span class="text-sm text-gray-700">Zero-RTT handshake for fast connections</span>
+                            </div>
+                            <div class="flex items-center">
+                                <div class="w-2 h-2 bg-indigo-500 rounded-full mr-3"></div>
+                                <span class="text-sm text-gray-700">Native stream multiplexing</span>
+                            </div>
+                            <div class="flex items-center">
+                                <div class="w-2 h-2 bg-indigo-500 rounded-full mr-3"></div>
+                                <span class="text-sm text-gray-700">Built-in TLS 1.3 encryption</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Column 3 -->
+                <div class="space-y-6">
+                    <!-- 7. Custom Binary Protocol -->
+                    <div
+                        class="bg-white p-5 rounded-lg border border-gray-100 shadow-sm hover:shadow-md transition-shadow duration-200">
+                        <div class="mb-4">
+                            <div
+                                class="inline-flex items-center px-3 py-1 rounded-full bg-cyan-50 text-cyan-700 text-sm font-semibold mb-3">
+                                <span class="w-2 h-2 bg-cyan-500 rounded-full mr-2"></span>
+                                PROTOCOL
+                            </div>
+                            <h3 class="text-lg font-semibold text-gray-900 mb-2">Custom Binary Protocol</h3>
+                            <p class="text-gray-700 mb-3 text-sm leading-relaxed">
+                                Zero-parsing wire format (not HTTP/JSON) optimized for microsecond latencies.
+                            </p>
+                        </div>
+                        <div class="space-y-2">
+                            <div class="flex justify-between items-center p-2">
+                                <span class="text-sm text-gray-600">Parsing Overhead</span>
+                                <span class="font-semibold text-green-600">Zero</span>
+                            </div>
+                            <div class="flex justify-between items-center p-2">
+                                <span class="text-sm text-gray-600">Payload Size</span>
+                                <span class="font-semibold text-green-600">Much smaller</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 8. Full Replication -->
+                    <div
+                        class="bg-white p-5 rounded-lg border border-gray-100 shadow-sm hover:shadow-md transition-shadow duration-200">
+                        <div class="mb-4">
+                            <div
+                                class="inline-flex items-center px-3 py-1 rounded-full bg-teal-50 text-teal-700 text-sm font-semibold mb-3">
+                                <span class="w-2 h-2 bg-teal-500 rounded-full mr-2"></span>
+                                CLUSTERING
+                            </div>
+                            <h3 class="text-lg font-semibold text-gray-900 mb-2">Full Replication Cluster</h3>
+                            <p class="text-gray-700 mb-3 text-sm leading-relaxed">
+                                Complete data replication across all nodes with no sharding overhead.
+                            </p>
+                        </div>
+                        <div class="space-y-3">
+                            <div class="flex items-start">
+                                <div class="w-2 h-2 bg-teal-500 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                                <p class="text-sm text-gray-700">No cross-node joins required</p>
+                            </div>
+                            <div class="flex items-start">
+                                <div class="w-2 h-2 bg-teal-500 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                                <p class="text-sm text-gray-700">Consistent 1-2ms reads on follower nodes</p>
+                            </div>
+                            <div class="flex items-start">
+                                <div class="w-2 h-2 bg-teal-500 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                                <p class="text-sm text-gray-700">All nodes contain complete dataset</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 9. Lock-Free Snapshots -->
+                    <div
+                        class="bg-white p-5 rounded-lg border border-gray-100 shadow-sm hover:shadow-md transition-shadow duration-200">
+                        <div class="mb-4">
+                            <div
+                                class="inline-flex items-center px-3 py-1 rounded-full bg-amber-50 text-amber-700 text-sm font-semibold mb-3">
+                                <span class="w-2 h-2 bg-amber-500 rounded-full mr-2"></span>
+                                PERSISTENCE
+                            </div>
+                            <h3 class="text-lg font-semibold text-gray-900 mb-2">Lock-Free Snapshots</h3>
+                            <p class="text-gray-700 mb-3 text-sm leading-relaxed">
+                                Snapshots use Rust's atomic references and copy-on-write for zero-downtime persistence.
+                            </p>
+                        </div>
+                        <div class="space-y-2">
+                            <div class="flex justify-between items-center p-2 bg-amber-50 rounded">
+                                <span class="text-sm text-gray-700">Snapshot Pause Time</span>
+                                <span class="font-semibold text-amber-800">4-10ms</span>
+                            </div>
+                            <div class="flex justify-between items-center p-2 bg-amber-50 rounded">
+                                <span class="text-sm text-gray-700">60M Records Load Time</span>
+                                <span class="font-semibold text-amber-800">2-8 seconds</span>
+                            </div>
+                            <div class="flex justify-between items-center p-2 bg-amber-50 rounded">
+                                <span class="text-sm text-gray-700">Snapshot Size vs Raw Data</span>
+                                <span class="font-semibold text-amber-800">~15%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+        <!-- Technical Trade-offs -->
+        <section class="mb-16">
+            <h2 class="text-2xl font-bold text-gray-800 mb-8 border-l-4 border-amber-500 pl-4">Deliberate Trade-offs
+            </h2>
+
+            <div class="bg-amber-50 border border-amber-200 rounded-xl p-6">
+                <div class="grid md:grid-cols-2 gap-6">
+                    <div class="bg-white p-4 rounded-lg border border-amber-100">
+                        <h4 class="font-bold text-amber-700 mb-2">Constraint</h4>
+                        <p class="text-gray-700">Max 32 amenities, 8 cancellation rules</p>
+                    </div>
+                    <div class="bg-white p-4 rounded-lg border border-amber-100">
+                        <h4 class="font-bold text-green-700 mb-2">Benefit</h4>
+                        <p class="text-gray-700">Bitmask encoding enables SIMD and single-cycle filtering</p>
+                    </div>
+                </div>
+
+                <p class="text-amber-800 font-semibold mb-4">
+                    These constraints cover 95%+ of booking platform use cases. For edge cases, your system can
+                    gracefully fall
+                    back to the database.
+                </p>
+            </div>
+        </section>
+
+        <!-- Real-World Architecture -->
+        <section class="mb-16">
+            <h2 class="text-2xl font-bold text-gray-800 mb-8">Production Architecture</h2>
+
+            <!-- Row 1: Foundation Layer -->
+            <div class="mb-8">
+                <div class="flex items-center mb-6">
+                    <div class="w-3 h-12 bg-blue-500 rounded-r-lg mr-4"></div>
+                    <h3 class="text-xl font-bold text-gray-700">Foundation Layer</h3>
+                </div>
+                <div class="grid md:grid-cols-2 gap-8">
+                    <!-- TiKV Raft Core -->
+                    <div
+                        class="bg-gray-800 p-6 rounded-xl border border-gray-700 hover:border-cyan-500 transition-colors">
+                        <div class="flex items-center mb-4">
+                            <div
+                                class="w-10 h-10 bg-gradient-to-br from-cyan-500 to-cyan-700 rounded-lg flex items-center justify-center mr-3">
+                                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                                </svg>
+                            </div>
+                            <h3 class="text-xl font-bold text-white">TiKV Raft Core</h3>
+                        </div>
+                        <p class="text-gray-300 mb-4">
+                            Battle-tested consensus from CNCF-graduated TiKV project.
+                        </p>
+                        <ul class="space-y-2 text-sm text-gray-300">
+                            <li class="flex items-start">
+                                <svg class="w-4 h-4 text-cyan-400 mr-2 mt-0.5 flex-shrink-0" fill="none"
+                                    stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M5 13l4 4L19 7" />
+                                </svg>
+                                <span>Single-digit ms leader election</span>
+                            </li>
+                            <li class="flex items-start">
+                                <svg class="w-4 h-4 text-cyan-400 mr-2 mt-0.5 flex-shrink-0" fill="none"
+                                    stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M5 13l4 4L19 7" />
+                                </svg>
+                                <span>Strong consistency guarantees</span>
+                            </li>
+                            <li class="flex items-start">
+                                <svg class="w-4 h-4 text-cyan-400 mr-2 mt-0.5 flex-shrink-0" fill="none"
+                                    stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M5 13l4 4L19 7" />
+                                </svg>
+                                <span>Same reliability as etcd</span>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <!-- Tuned Tokio Server -->
+                    <div
+                        class="bg-gray-800 p-6 rounded-xl border border-gray-700 hover:border-purple-500 transition-colors">
+                        <div class="flex items-center mb-4">
+                            <div
+                                class="w-10 h-10 bg-gradient-to-br from-purple-500 to-purple-700 rounded-lg flex items-center justify-center mr-3">
+                                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                </svg>
+                            </div>
+                            <h3 class="text-xl font-bold text-white">Tuned Tokio Server</h3>
+                        </div>
+                        <p class="text-gray-300 mb-4">
+                            Custom-configured async runtime for high-throughput TCP.
+                        </p>
+                        <ul class="space-y-2 text-sm text-gray-300">
+                            <li class="flex items-start">
+                                <svg class="w-4 h-4 text-purple-400 mr-2 mt-0.5 flex-shrink-0" fill="none"
+                                    stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M5 13l4 4L19 7" />
+                                </svg>
+                                <span>10k+ concurrent connections per node</span>
+                            </li>
+                            <li class="flex items-start">
+                                <svg class="w-4 h-4 text-purple-400 mr-2 mt-0.5 flex-shrink-0" fill="none"
+                                    stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M5 13l4 4L19 7" />
+                                </svg>
+                                <span>Zero-copy binary protocol</span>
+                            </li>
+                            <li class="flex items-start">
+                                <svg class="w-4 h-4 text-purple-400 mr-2 mt-0.5 flex-shrink-0" fill="none"
+                                    stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M5 13l4 4L19 7" />
+                                </svg>
+                                <span>Separate system/worker thread pools</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Row 2: Performance Layer -->
+            <div>
+                <div class="flex items-center mb-6">
+                    <div class="w-3 h-12 bg-green-500 rounded-r-lg mr-4"></div>
+                    <h3 class="text-xl font-bold text-gray-700">Performance Layer</h3>
+                </div>
+                <div class="grid md:grid-cols-2 gap-8">
+                    <!-- Adaptive Parallel Processing -->
+                    <div
+                        class="bg-gray-800 p-6 rounded-xl border border-gray-700 hover:border-yellow-500 transition-colors">
+                        <div class="flex items-center mb-4">
+                            <div
+                                class="w-10 h-10 bg-gradient-to-br from-yellow-500 to-yellow-700 rounded-lg flex items-center justify-center mr-3">
+                                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                                </svg>
+                            </div>
+                            <h3 class="text-xl font-bold text-white">Adaptive Parallel Processing</h3>
+                        </div>
+                        <p class="text-gray-300 mb-4">
+                            Intelligent workload distribution across CPU cores.
+                        </p>
+                        <ul class="space-y-2 text-sm text-gray-300">
+                            <li class="flex items-start">
+                                <svg class="w-4 h-4 text-yellow-400 mr-2 mt-0.5 flex-shrink-0" fill="none"
+                                    stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M5 13l4 4L19 7" />
+                                </svg>
+                                <span>Data automatically partitioned for parallel execution</span>
+                            </li>
+                            <li class="flex items-start">
+                                <svg class="w-4 h-4 text-yellow-400 mr-2 mt-0.5 flex-shrink-0" fill="none"
+                                    stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M5 13l4 4L19 7" />
+                                </svg>
+                                <span>Processors pinned to CPU cores when beneficial</span>
+                            </li>
+                            <li class="flex items-start">
+                                <svg class="w-4 h-4 text-yellow-400 mr-2 mt-0.5 flex-shrink-0" fill="none"
+                                    stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M5 13l4 4L19 7" />
+                                </svg>
+                                <span>Zero cross-processor synchronization overhead</span>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <!-- QUIC Transport -->
+                    <div
+                        class="bg-gray-800 p-6 rounded-xl border border-gray-700 hover:border-green-500 transition-colors">
+                        <div class="flex items-center mb-4">
+                            <div
+                                class="w-10 h-10 bg-gradient-to-br from-green-500 to-green-700 rounded-lg flex items-center justify-center mr-3">
+                                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                            </div>
+                            <h3 class="text-xl font-bold text-white">QUIC Transport</h3>
+                        </div>
+                        <p class="text-gray-300 mb-4">
+                            Modern transport protocol with built-in encryption.
+                        </p>
+                        <ul class="space-y-2 text-sm text-gray-300">
+                            <li class="flex items-start">
+                                <svg class="w-4 h-4 text-green-400 mr-2 mt-0.5 flex-shrink-0" fill="none"
+                                    stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M5 13l4 4L19 7" />
+                                </svg>
+                                <span>0-RTT connection resumption</span>
+                            </li>
+                            <li class="flex items-start">
+                                <svg class="w-4 h-4 text-green-400 mr-2 mt-0.5 flex-shrink-0" fill="none"
+                                    stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M5 13l4 4L19 7" />
+                                </svg>
+                                <span>Stream multiplexing</span>
+                            </li>
+                            <li class="flex items-start">
+                                <svg class="w-4 h-4 text-green-400 mr-2 mt-0.5 flex-shrink-0" fill="none"
+                                    stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M5 13l4 4L19 7" />
+                                </svg>
+                                <span>Head-of-line blocking prevention</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Architecture Summary -->
+            <div
+                class="mt-10 bg-gradient-to-r from-blue-900/20 to-indigo-900/20 border border-blue-800/30 rounded-2xl p-6">
+                <h4 class="text-xl font-bold text-gray-800 mb-4 text-center">Complete Stack Integration</h4>
+                <p class="text-gray-700 mb-4 text-center">
+                    Roomzin integrates these battle-tested components into a cohesive system optimized for booking
+                    workloads.
+                </p>
+                <div class="grid md:grid-cols-3 gap-4 text-sm">
+                    <div class="text-center p-3 bg-white/50 rounded-lg">
+                        <div class="font-semibold text-blue-600 mb-1">Consensus</div>
+                        <p class="text-gray-600">TiKV Raft ensures data consistency across cluster</p>
+                    </div>
+                    <div class="text-center p-3 bg-white/50 rounded-lg">
+                        <div class="font-semibold text-purple-600 mb-1">Networking</div>
+                        <p class="text-gray-600">Tokio + QUIC handle 10k+ connections with minimal latency</p>
+                    </div>
+                    <div class="text-center p-3 bg-white/50 rounded-lg">
+                        <div class="font-semibold text-yellow-600 mb-1">Processing</div>
+                        <p class="text-gray-600">Adaptive partitioning delivers predictable performance</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+        <section class="mb-16">
+            <div class="mt-10 bg-gradient-to-r from-yellow-50 to-amber-50 border border-yellow-200 rounded-2xl p-8">
+                <h4 class="text-2xl font-bold text-gray-800 mb-6 text-center">Intelligent Data Partitioning</h4>
+
+                <div class="flex flex-col md:flex-row items-center justify-between space-y-8 md:space-y-0">
+                    <!-- Left: Diagram -->
+                    <div class="md:w-2/5">
+                        <div class="bg-white p-4 rounded-xl shadow-inner border border-yellow-300">
+                            <div class="text-center mb-4">
+                                <div
+                                    class="inline-block px-4 py-2 bg-yellow-100 text-yellow-800 rounded-full text-sm font-bold">
+                                    Automatic Load Distribution
+                                </div>
+                            </div>
+
+                            <div class="space-y-3">
+                                <!-- Segment 1 -->
+                                <div class="flex items-center">
+                                    <div
+                                        class="w-6 h-6 bg-blue-500 rounded-lg flex items-center justify-center text-white text-xs font-bold mr-3">
+                                        1
+                                    </div>
+                                    <div class="flex-1">
+                                        <div class="text-sm font-semibold text-gray-800">Segment: Paris North</div>
+                                        <div class="text-xs text-gray-600">360 properties • Assigned to Processor 1
+                                        </div>
+                                    </div>
+                                    <div class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">Processor 1</div>
+                                </div>
+
+                                <!-- Segment 2 -->
+                                <div class="flex items-center">
+                                    <div
+                                        class="w-6 h-6 bg-green-500 rounded-lg flex items-center justify-center text-white text-xs font-bold mr-3">
+                                        2
+                                    </div>
+                                    <div class="flex-1">
+                                        <div class="text-sm font-semibold text-gray-800">Segment: Paris South</div>
+                                        <div class="text-xs text-gray-600">420 properties • Assigned to Processor 2
+                                        </div>
+                                    </div>
+                                    <div class="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">Processor 2</div>
+                                </div>
+
+                                <!-- Segment 3 -->
+                                <div class="flex items-center">
+                                    <div
+                                        class="w-6 h-6 bg-purple-500 rounded-lg flex items-center justify-center text-white text-xs font-bold mr-3">
+                                        3
+                                    </div>
+                                    <div class="flex-1">
+                                        <div class="text-sm font-semibold text-gray-800">Segment: Paris Central</div>
+                                        <div class="text-xs text-gray-600">510 properties • Assigned to Processor 3
+                                        </div>
+                                    </div>
+                                    <div class="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded">Processor 3
+                                    </div>
+                                </div>
+
+                                <!-- Dots -->
+                                <div class="text-center text-gray-400">⋮</div>
+
+                                <!-- Segment N -->
+                                <div class="flex items-center">
+                                    <div
+                                        class="w-6 h-6 bg-red-500 rounded-lg flex items-center justify-center text-white text-xs font-bold mr-3">
+                                        N
+                                    </div>
+                                    <div class="flex-1">
+                                        <div class="text-sm font-semibold text-gray-800">Large Segment</div>
+                                        <div class="text-xs text-gray-600">Multiple processors • Load-balanced</div>
+                                    </div>
+                                    <div class="flex space-x-1">
+                                        <div class="text-xs bg-red-100 text-red-800 px-2 py-1 rounded">P 4</div>
+                                        <div class="text-xs bg-red-100 text-red-800 px-2 py-1 rounded">P 5</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Core mapping -->
+                            <div class="mt-4 pt-4 border-t border-gray-200">
+                                <div class="flex items-center justify-center space-x-4">
+                                    <div class="text-xs text-gray-500">CPU Cores:</div>
+                                    <div class="flex space-x-1">
+                                        <div
+                                            class="w-6 h-6 bg-gray-800 text-white rounded text-xs flex items-center justify-center">
+                                            0</div>
+                                        <div
+                                            class="w-6 h-6 bg-gray-800 text-white rounded text-xs flex items-center justify-center">
+                                            1</div>
+                                        <div
+                                            class="w-6 h-6 bg-gray-800 text-white rounded text-xs flex items-center justify-center">
+                                            2</div>
+                                        <div
+                                            class="w-6 h-6 bg-gray-300 text-gray-800 rounded text-xs flex items-center justify-center">
+                                            3</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right: Explanation -->
+                    <div class="md:w-1/2">
+                        <h5 class="text-lg font-bold text-gray-800 mb-4">Smart Workload Distribution</h5>
+                        <div class="space-y-4">
+                            <div class="flex items-start">
+                                <div
+                                    class="w-6 h-6 bg-yellow-100 text-yellow-800 rounded-full flex items-center justify-center text-sm font-bold mr-3 flex-shrink-0">
+                                    1
+                                </div>
+                                <div>
+                                    <p class="font-semibold text-gray-800">Flexible Processor Allocation</p>
+                                    <p class="text-sm text-gray-600">Each logical processor can handle multiple segments
+                                        if needed, or large segments can be split across multiple processors</p>
+                                </div>
+                            </div>
+
+                            <div class="flex items-start">
+                                <div
+                                    class="w-6 h-6 bg-yellow-100 text-yellow-800 rounded-full flex items-center justify-center text-sm font-bold mr-3 flex-shrink-0">
+                                    2
+                                </div>
+                                <div>
+                                    <p class="font-semibold text-gray-800">CPU-Aware Scheduling</p>
+                                    <p class="text-sm text-gray-600">Processors are pinned to CPU cores for cache
+                                        efficiency, but multiple processors can share a core when necessary</p>
+                                </div>
+                            </div>
+
+                            <div class="flex items-start">
+                                <div
+                                    class="w-6 h-6 bg-yellow-100 text-yellow-800 rounded-full flex items-center justify-center text-sm font-bold mr-3 flex-shrink-0">
+                                    3
+                                </div>
+                                <div>
+                                    <p class="font-semibold text-gray-800">Automatic Load Balancing</p>
+                                    <p class="text-sm text-gray-600">The system intelligently partitions data within
+                                        segments to ensure even distribution across available processors</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mt-6 p-4 bg-yellow-100 border border-yellow-300 rounded-lg">
+                            <div class="flex items-start">
+                                <div class="text-yellow-500 mr-2">💡</div>
+                                <div>
+                                    <p class="text-sm text-yellow-800 font-semibold">
+                                        Key Insight: Roomzin adapts to your hardware
+                                    </p>
+                                    <p class="text-xs text-yellow-700 mt-1">
+                                        Whether you have 4 cores or 64 cores, the system automatically optimizes
+                                        processor allocation for maximum throughput
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Add this after the "Production Architecture" section -->
+
+        <section class="mb-16">
+            <h2 class="text-2xl font-bold text-gray-800 mb-8">Smart SDK & Protocol Architecture</h2>
+
+            <div class="bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 rounded-2xl p-8 mb-10">
+                <div class="flex flex-col md:flex-row items-center gap-8">
+                    <!-- Left: SDK Intelligence -->
+                    <div class="md:w-1/2">
+                        <div class="flex items-center mb-6">
+                            <div
+                                class="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center mr-3">
+                                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                            </div>
+                            <h3 class="text-xl font-bold text-gray-800">Intelligent SDKs</h3>
+                        </div>
+
+                        <div class="space-y-4">
+                            <div class="flex items-start">
+                                <div
+                                    class="w-6 h-6 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center text-sm font-bold mr-3 flex-shrink-0 mt-0.5">
+                                    1
+                                </div>
+                                <div>
+                                    <p class="font-semibold text-gray-800">Topology-Aware Routing</p>
+                                    <p class="text-sm text-gray-600">SDKs automatically discover cluster layout and
+                                        route requests to optimal nodes</p>
+                                </div>
+                            </div>
+
+                            <div class="flex items-start">
+                                <div
+                                    class="w-6 h-6 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center text-sm font-bold mr-3 flex-shrink-0 mt-0.5">
+                                    2
+                                </div>
+                                <div>
+                                    <p class="font-semibold text-gray-800">Automatic Failover</p>
+                                    <p class="text-sm text-gray-600">Leader election? Node down? SDKs reroute
+                                        instantly—no code changes needed</p>
+                                </div>
+                            </div>
+
+                            <div class="flex items-start">
+                                <div
+                                    class="w-6 h-6 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center text-sm font-bold mr-3 flex-shrink-0 mt-0.5">
+                                    3
+                                </div>
+                                <div>
+                                    <p class="font-semibold text-gray-800">Built-in Load Balancing</p>
+                                    <p class="text-sm text-gray-600">Reads go to fastest follower, writes to leader—all
+                                        handled automatically</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right: Visual -->
+                    <div class="md:w-1/2">
+                        <div class="bg-white p-6 rounded-xl shadow border border-gray-200">
+                            <div class="text-center mb-4">
+                                <div
+                                    class="inline-block px-3 py-1 bg-indigo-100 text-indigo-800 rounded-full text-xs font-bold">
+                                    SDK Connection Flow
+                                </div>
+                            </div>
+
+                            <div class="space-y-3">
+                                <div class="flex items-center justify-center">
+                                    <div
+                                        class="w-8 h-8 bg-indigo-500 text-white rounded-full flex items-center justify-center text-xs font-bold">
+                                        SDK
+                                    </div>
+                                    <div class="mx-4 text-gray-400">→</div>
+                                    <div class="text-center">
+                                        <div class="w-24 px-3 py-2 bg-gray-100 rounded-lg text-xs">
+                                            Connect to<br>any node
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="text-center text-gray-400">↓</div>
+
+                                <div class="flex items-center justify-center">
+                                    <div class="text-center">
+                                        <div
+                                            class="w-32 px-3 py-2 bg-indigo-50 border border-indigo-200 rounded-lg text-xs">
+                                            Fetch cluster<br>topology
+                                        </div>
+                                    </div>
+                                    <div class="mx-4 text-gray-400">→</div>
+                                    <div class="text-center">
+                                        <div class="w-24 px-3 py-2 bg-gray-100 rounded-lg text-xs">
+                                            Build<br>routing map
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="text-center text-gray-400">↓</div>
+
+                                <div class="text-center">
+                                    <div
+                                        class="inline-block px-3 py-2 bg-green-50 border border-green-200 rounded-lg text-xs">
+                                        Auto-route requests<br>based on latency & role
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Decoupled Channels Section -->
+            <div class="bg-gradient-to-r from-blue-50 to-cyan-50 border border-blue-200 rounded-2xl p-8">
+                <div class="flex items-center mb-6">
+                    <div
+                        class="w-10 h-10 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-lg flex items-center justify-center mr-3">
+                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-800">Decoupled Request/Response Channels</h3>
+                </div>
+
+                <p class="text-gray-700 mb-6">
+                    Unlike traditional request/response blocking, Roomzin uses fully decoupled channels for maximum
+                    throughput.
+                </p>
+
+                <div class="grid md:grid-cols-2 gap-6">
+                    <!-- Traditional Approach -->
+                    <div class="bg-white p-5 rounded-xl border border-gray-300">
+                        <div class="flex items-center mb-4">
+                            <div class="w-3 h-3 bg-red-500 rounded-full mr-2"></div>
+                            <h4 class="font-bold text-gray-800">Traditional Blocking</h4>
+                        </div>
+                        <div class="space-y-3">
+                            <div class="flex items-center">
+                                <div class="w-6 h-6 bg-gray-200 rounded flex items-center justify-center text-xs mr-3">1
+                                </div>
+                                <div class="text-sm text-gray-700">Client sends request</div>
+                            </div>
+                            <div class="flex items-center">
+                                <div class="w-6 h-6 bg-gray-200 rounded flex items-center justify-center text-xs mr-3">2
+                                </div>
+                                <div class="text-sm text-gray-700">Connection blocks waiting</div>
+                            </div>
+                            <div class="flex items-center">
+                                <div class="w-6 h-6 bg-gray-200 rounded flex items-center justify-center text-xs mr-3">3
+                                </div>
+                                <div class="text-sm text-gray-700">Server processes request</div>
+                            </div>
+                            <div class="flex items-center">
+                                <div class="w-6 h-6 bg-gray-200 rounded flex items-center justify-center text-xs mr-3">4
+                                </div>
+                                <div class="text-sm text-gray-700">Server sends response</div>
+                            </div>
+                            <div class="flex items-center">
+                                <div class="w-6 h-6 bg-gray-200 rounded flex items-center justify-center text-xs mr-3">5
+                                </div>
+                                <div class="text-sm text-gray-700">Client can send next request</div>
+                            </div>
+                        </div>
+                        <div class="mt-4 pt-3 border-t border-gray-200">
+                            <p class="text-xs text-gray-600">Inefficient: Connection idle while processing</p>
+                        </div>
+                    </div>
+
+                    <!-- Roomzin Approach -->
+                    <div class="bg-white p-5 rounded-xl border-2 border-blue-500 shadow-md">
+                        <div class="flex items-center mb-4">
+                            <div class="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
+                            <h4 class="font-bold text-gray-800">Roomzin Decoupled Channels</h4>
+                        </div>
+                        <div class="space-y-3">
+                            <div class="flex items-center">
+                                <div
+                                    class="w-6 h-6 bg-blue-100 text-blue-800 rounded flex items-center justify-center text-xs font-bold mr-3">
+                                    R</div>
+                                <div class="text-sm text-gray-700"><span class="font-semibold">Request Stream</span>:
+                                    Client sends multiple requests</div>
+                            </div>
+                            <div class="flex items-center">
+                                <div
+                                    class="w-6 h-6 bg-green-100 text-green-800 rounded flex items-center justify-center text-xs font-bold mr-3">
+                                    P</div>
+                                <div class="text-sm text-gray-700"><span class="font-semibold">Processing</span>: Server
+                                    processes in parallel</div>
+                            </div>
+                            <div class="flex items-center">
+                                <div
+                                    class="w-6 h-6 bg-purple-100 text-purple-800 rounded flex items-center justify-center text-xs font-bold mr-3">
+                                    D</div>
+                                <div class="text-sm text-gray-700"><span class="font-semibold">Demux</span>: Responses
+                                    routed to correct callers</div>
+                            </div>
+                            <div class="flex items-center">
+                                <div
+                                    class="w-6 h-6 bg-cyan-100 text-cyan-800 rounded flex items-center justify-center text-xs font-bold mr-3">
+                                    S</div>
+                                <div class="text-sm text-gray-700"><span class="font-semibold">Streaming</span>:
+                                    Responses arrive out-of-order, async</div>
+                            </div>
+                        </div>
+                        <div class="mt-4 pt-3 border-t border-blue-200">
+                            <p class="text-sm text-green-600 font-semibold">Efficient: Full pipeline utilization</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Technical Detail -->
+                <div class="mt-8 bg-blue-900/5 border border-blue-200 rounded-xl p-5">
+                    <div class="flex items-start">
+                        <div class="text-blue-500 mr-3 mt-1">💡</div>
+                        <div>
+                            <p class="font-semibold text-gray-800 mb-2">How It Works</p>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                                <div>
+                                    <p class="text-gray-700"><span class="font-semibold">Client-side</span>: Each
+                                        request gets a unique correlation ID. SDK maintains request/response mapping.
+                                    </p>
+                                </div>
+                                <div>
+                                    <p class="text-gray-700"><span class="font-semibold">Server-side</span>: Separate
+                                        threads handle requests and responses. No blocking, pure async processing.</p>
+                                </div>
+                            </div>
+                            <div class="mt-4">
+                                <p class="text-sm text-blue-700 font-semibold">
+                                    Result: 10k RPS with predictable latency, even with mixed request sizes
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Shard Context -->
+            <div class="mt-8 bg-gray-50 border border-gray-300 rounded-xl p-6">
+                <div class="flex items-center mb-4">
+                    <svg class="w-5 h-5 text-gray-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <h4 class="text-lg font-bold text-gray-800">Enterprise Context: Shard Isolation</h4>
+                </div>
+                <p class="text-gray-700 mb-3">
+                    In large booking platforms, data is sharded by region or zone. Each shard runs its own Roomzin
+                    cluster.
+                </p>
+                <div class="flex flex-col md:flex-row gap-4">
+                    <div class="flex-1 bg-white p-4 rounded-lg border border-gray-200">
+                        <p class="font-semibold text-gray-800 mb-2">Shard = Independent Cluster</p>
+                        <p class="text-sm text-gray-600">Each geographical region runs its own Roomzin cluster with full
+                            HA. SDKs only need to know their shard's nodes.</p>
+                    </div>
+                    <div class="flex-1 bg-white p-4 rounded-lg border border-gray-200">
+                        <p class="font-semibold text-gray-800 mb-2">No Cross-Shard Communication</p>
+                        <p class="text-sm text-gray-600">Like Redis deployments, each shard is isolated. Traffic stays
+                            within the shard for lowest latency.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- The "Why" Section -->
+        <section class="mb-16">
+            <h2 class="text-2xl font-bold text-gray-800 mb-8">Why This Matters for Booking Platforms</h2>
+
+            <div class="grid md:grid-cols-2 gap-8">
+                <div class="bg-white p-6 rounded-xl shadow border border-gray-200">
+                    <h3 class="text-xl font-bold text-gray-800 mb-4">Revenue Impact</h3>
+                    <div class="space-y-4">
+                        <div class="flex items-start">
+                            <div class="w-2 h-2 bg-blue-500 rounded-full mt-2 mr-3"></div>
+                            <div>
+                                <p class="font-semibold text-gray-800">Every 100ms faster = 1-3% more conversions</p>
+                                <p class="text-sm text-gray-600">Roomzin cuts 150ms → 2ms = potential 4-12% revenue lift
+                                </p>
+                            </div>
+                        </div>
+                        <div class="flex items-start">
+                            <div class="w-2 h-2 bg-blue-500 rounded-full mt-2 mr-3"></div>
+                            <div>
+                                <p class="font-semibold text-gray-800">Zero overbooking during flash sales</p>
+                                <p class="text-sm text-gray-600">Strong consistency prevents double bookings under load
+                                </p>
+                            </div>
+                        </div>
+                        <div class="flex items-start">
+                            <div class="w-2 h-2 bg-blue-500 rounded-full mt-2 mr-3"></div>
+                            <div>
+                                <p class="font-semibold text-gray-800">Handle Black Friday traffic spikes</p>
+                                <p class="text-sm text-gray-600">Predictable performance at 25k RPS per shard</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-xl shadow border border-gray-200">
+                    <h3 class="text-xl font-bold text-gray-800 mb-4">Operational Impact</h3>
+                    <div class="space-y-4">
+                        <div class="flex items-start">
+                            <div class="w-2 h-2 bg-green-500 rounded-full mt-2 mr-3"></div>
+                            <div>
+                                <p class="font-semibold text-gray-800">Eliminate cache debugging</p>
+                                <p class="text-sm text-gray-600">No more TTL mismatches, invalidation storms, or cache
+                                    stampedes</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start">
+                            <div class="w-2 h-2 bg-green-500 rounded-full mt-2 mr-3"></div>
+                            <div>
+                                <p class="font-semibold text-gray-800">70% less infrastructure</p>
+                                <p class="text-sm text-gray-600">Replace Redis cluster + DB tuning + application logic
+                                    with one binary</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start">
+                            <div class="w-2 h-2 bg-green-500 rounded-full mt-2 mr-3"></div>
+                            <div>
+                                <p class="font-semibold text-gray-800">Developer time reallocated</p>
+                                <p class="text-sm text-gray-600">Instead of cache layer maintenance, build new features
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Call to Action -->
+        <section class="text-center py-12 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl">
+            <h2 class="text-3xl font-bold text-gray-800 mb-4">Ready to See It in Action?</h2>
+            <p class="text-lg text-gray-600 max-w-2xl mx-auto mb-8">
+                The best way to understand Roomzin is to run your own benchmarks.
+                Download the benchmark tool and test against your real workload.
+            </p>
+            <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                <a href="benchmarks.html"
+                    class="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors">
+                    View Benchmark Results
+                </a>
+                <a href="docs.html#benchmark"
+                    class="bg-white text-blue-600 px-6 py-3 rounded-lg font-semibold border border-blue-600 hover:bg-blue-50 transition-colors">
+                    Run Your Own Benchmarks
+                </a>
+            </div>
+        </section>
+    </div>
+
+    <footer class="bg-gray-800 text-white text-center py-8">
+        <p>&copy; 2025 Roomzin. All rights reserved.</p>
+        <div class="mt-4">
+            <a href="index.html" class="mx-2 hover:text-blue-400">Home</a> •
+            <a href="benchmarks.html" class="mx-2 hover:text-blue-400">Benchmarks</a> •
+            <a href="architecture.html" class="mx-2 hover:text-blue-400">Architecture</a> •
+            <a href="docs.html" class="mx-2 hover:text-blue-400">Docs</a>
+        </div>
+    </footer>
+</body>
+
+</html>

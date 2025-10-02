@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/x-icon" href="img/icon-sm.png">
+    <title>Performance – Roomzin</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body class="bg-gray-50">
+    <header class="bg-white">
+        <nav class="container mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="logo">
+                <img src="img/logo.png" alt="Roomzin Logo" class="w-36 mx-auto" />
+            </div>
+            <div class="space-x-6 text-gray-700">
+                <a href="index.html" class="hover:text-blue-600">Home</a>
+                <a href="architecture.html" class="font-semibold hover:text-blue-600">Architecture</a>
+                <a href="benchmarks.html" class="font-semibold text-blue-600">Benchmarks</a>
+                <a href="docs.html" class="hover:text-blue-600">Docs</a>
+            </div>
+        </nav>
+    </header>
+
+    <div class="bg text-white text-center py-12"
+        style="background: #fff;border-bottom: 3px solid #5dccff;padding: 100px;color: #5dccff;">
+        <h1 class="text-3xl font-bold">Production-grade Speed, Laptop Proof</h1>
+    </div>
+
+    <div class="container mx-auto px-4 py-8">
+        <!-- ------------------------------------------------------------------ -->
+        <section class="mb-12 bg-white p-6 rounded-lg shadow-sm">
+            <h2 class="text-2xl font-semibold mb-4 text-gray-800">Benchmark at a Glance</h2>
+            <ul class="list-disc pl-6 text-gray-600 space-y-1">
+                <li><strong>Dataset:</strong> 60 M records (100 k properties * 10 room types * 60 days)</li>
+                <li><strong>Traffic:</strong> 10 000 RPS sustained, 0 % errors</li>
+                <li><strong>Typical query:</strong> 3 days, 300 results, 50–1 000 concurrent connections</li>
+                <li><strong>Hardware:</strong> consumer laptop (4-core i7, 16 GB RAM)</li>
+            </ul>
+        </section>
+
+        <!-- ------------------------------------------------------------------ -->
+        <section class="mb-12">
+            <h2 class="text-2xl font-semibold mb-4 text-gray-800">1. Latency vs. Concurrent Connections</h2>
+            <p class="text-gray-600 mb-4">
+                Keep connections high without hurting tail latency. P99 stays under 7 ms even with 1 000 parallel
+                clients.
+            </p>
+            <canvas id="chartConn" class="mb-4"></canvas>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-gray-600">
+                    <thead class="bg-gray-100">
+                        <tr>
+                            <th class="px-4 py-2">Connections</th>
+                            <th class="px-4 py-2">P50 (ms)</th>
+                            <th class="px-4 py-2">P95 (ms)</th>
+                            <th class="px-4 py-2">P99 (ms)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="px-4 py-2">50</td>
+                            <td class="px-4 py-2">0.97</td>
+                            <td class="px-4 py-2">2.75</td>
+                            <td class="px-4 py-2">3.0</td>
+                        </tr>
+                        <tr>
+                            <td class="px-4 py-2">500</td>
+                            <td class="px-4 py-2">0.38</td>
+                            <td class="px-4 py-2">0.76</td>
+                            <td class="px-4 py-2">1.67</td>
+                        </tr>
+                        <tr>
+                            <td class="px-4 py-2">1 000</td>
+                            <td class="px-4 py-2">0.37</td>
+                            <td class="px-4 py-2">0.74</td>
+                            <td class="px-4 py-2">1.31</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- ------------------------------------------------------------------ -->
+        <section class="mb-12">
+            <h2 class="text-2xl font-semibold mb-4 text-gray-800">2. Stay Window – Up to 14 Days, Still Sub-10 ms</h2>
+            <p class="text-gray-600 mb-4">
+                Stay window increase payload size, yet P95 remains below 6 ms at 10 k RPS for 7 days and below 9 ms
+                for 14 days.
+            </p>
+            <canvas id="chartDays" class="mb-4"></canvas>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-gray-600">
+                    <thead class="bg-gray-100">
+                        <tr>
+                            <th class="px-4 py-2">Search Days</th>
+                            <th class="px-4 py-2">P50 (ms)</th>
+                            <th class="px-4 py-2">P95 (ms)</th>
+                            <th class="px-4 py-2">P99 (ms)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="px-4 py-2">3</td>
+                            <td class="px-4 py-2">0.97</td>
+                            <td class="px-4 py-2">2.75</td>
+                            <td class="px-4 py-2">3.0</td>
+                        </tr>
+                        <tr>
+                            <td class="px-4 py-2">7</td>
+                            <td class="px-4 py-2">1.26</td>
+                            <td class="px-4 py-2">2.73</td>
+                            <td class="px-4 py-2">4.81</td>
+                        </tr>
+                        <tr>
+                            <td class="px-4 py-2">14</td>
+                            <td class="px-4 py-2">2.22</td>
+                            <td class="px-4 py-2">5.56</td>
+                            <td class="px-4 py-2">6.90</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- ------------------------------------------------------------------ -->
+        <section class="mb-12">
+            <h2 class="text-2xl font-semibold mb-4 text-gray-800">3. Result Limit – 300 vs. 500</h2>
+            <p class="text-gray-600 mb-4">
+                Doubling the result list (to 500) adds only ~1 ms to P95 at 10 k RPS – handy for meta-search or package
+                builds.
+            </p>
+            <canvas id="chartLimit" class="mb-4"></canvas>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-gray-600">
+                    <thead class="bg-gray-100">
+                        <tr>
+                            <th class="px-4 py-2">Limit</th>
+                            <th class="px-4 py-2">P50 (ms)</th>
+                            <th class="px-4 py-2">P95 (ms)</th>
+                            <th class="px-4 py-2">P99 (ms)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="px-4 py-2">300</td>
+                            <td class="px-4 py-2">0.97</td>
+                            <td class="px-4 py-2">2.75</td>
+                            <td class="px-4 py-2">3.0</td>
+                        </tr>
+                        <tr>
+                            <td class="px-4 py-2">500</td>
+                            <td class="px-4 py-2">1.17</td>
+                            <td class="px-4 py-2">2.31</td>
+                            <td class="px-4 py-2">3.06</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- REAL-LIFE TRAFFIC & 10× DATA-GROWTH  (limit = 300) -->
+        <section class="mb-12 bg-white p-6 rounded-lg shadow-sm">
+            <h2 class="text-2xl font-semibold mb-4 text-gray-800">Real-Life Traffic & 10× Data Growth</h2>
+
+            <!-- 1. Real-life: ≤ 3 days, 300 results, 25 k RPS -->
+            <h3 class="text-lg font-medium text-gray-700 mt-6 mb-2">What Happens in Production – 300 Results, 1-3 Nights
+            </h3>
+            <p class="text-gray-600 mb-4">
+                Most guests pick check-in/out within 3 days and rarely scroll beyond the first page (≈ 300 properties).
+                The table below keeps the 60 M record data set, returns 300 results per search (~180 kB response),
+                and pushes RPS to 25 000 – well above the peak hour seen by large OTAs.
+            </p>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-gray-600">
+                    <thead class="bg-gray-100">
+                        <tr>
+                            <th class="px-4 py-2">RPS</th>
+                            <th class="px-4 py-2">P50 (ms)</th>
+                            <th class="px-4 py-2">P95 (ms)</th>
+                            <th class="px-4 py-2">P99 (ms)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="px-4 py-2">10 000</td>
+                            <td class="px-4 py-2">0.93</td>
+                            <td class="px-4 py-2">1.65</td>
+                            <td class="px-4 py-2">2.60</td>
+                        </tr>
+                        <tr>
+                            <td class="px-4 py-2">25 000</td>
+                            <td class="px-4 py-2">0.89</td>
+                            <td class="px-4 py-2">2.00</td>
+                            <td class="px-4 py-2">3.11</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- 2. 6 M → 60 M – same query shape (300 results) -->
+            <h3 class="text-lg font-medium text-gray-700 mt-8 mb-2">Does 10× More Data Hurt? Same Query Shape, 10 k RPS
+            </h3>
+            <p class="text-gray-600 mb-4">
+                We re-ran the <strong>exact query pattern you show your users</strong> (3 days, 300 results)
+                against both the original 6 M and the full 60 M data set. Latency barely moves – proof that
+                Roomzin’s index is effectively.
+            </p>
+            <canvas id="chartDataGrowth" class="mb-4"></canvas>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-gray-600">
+                    <thead class="bg-gray-100">
+                        <tr>
+                            <th class="px-4 py-2">Dataset</th>
+                            <th class="px-4 py-2">Records</th>
+                            <th class="px-4 py-2">P50 (ms)</th>
+                            <th class="px-4 py-2">P95 (ms)</th>
+                            <th class="px-4 py-2">Δ P95</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="px-4 py-2">6 M</td>
+                            <td class="px-4 py-2">6 million</td>
+                            <td class="px-4 py-2">0.90</td>
+                            <td class="px-4 py-2">1.58</td>
+                            <td class="px-4 py-2">—</td>
+                        </tr>
+                        <tr>
+                            <td class="px-4 py-2">60 M</td>
+                            <td class="px-4 py-2">60 million</td>
+                            <td class="px-4 py-2">0.93</td>
+                            <td class="px-4 py-2">1.65</td>
+                            <td class="px-4 py-2">+0.07 ms</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <p class="text-sm text-gray-500 italic mt-2">
+                Test conditions: 50 connections, 3 search days, 300 result limit, 10 k RPS sustained for 30 s – 0 %
+                errors.
+            </p>
+        </section>
+
+        <!-- ------------------------------------------------------------------ -->
+        <section class="mb-12 bg-white p-6 rounded-lg shadow-sm">
+            <h2 class="text-2xl font-semibold mb-4 text-gray-800">Snapshot Performance</h2>
+            <p class="text-gray-600 mb-4">
+                Roomzin’s compact snapshots enable fast saves and reloads, with ~15% of raw data size, fitting large
+                datasets into minimal memory.
+            </p>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-gray-600">
+                    <thead class="bg-gray-100">
+                        <tr>
+                            <th class="px-4 py-2">Dataset</th>
+                            <th class="px-4 py-2">Snapshot Pause Time</th>
+                            <th class="px-4 py-2">Load Time</th>
+                            <th class="px-4 py-2">Raw Data Size</th>
+                            <th class="px-4 py-2">Snapshot Size</th>
+                            <th class="px-4 py-2">Memory</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>6M records (10_000 props * 10 room types * 60 days)</td>
+                            <td>4 ms</td>
+                            <td>743 ms</td>
+                            <td>561 MB</td>
+                            <td>85 MB</td>
+                            <td>&lt;250 MB</td>
+                        </tr>
+                        <tr>
+                            <td>60M records (100_000 props * 10 room types * 60 days)</td>
+                            <td>10 ms</td>
+                            <td>8110 ms</td>
+                            <td>5.7 GB</td>
+                            <td>850 MB</td>
+                            <td>&lt;2.8 GB</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- ------------------------------------------------------------------ -->
+        <section class="mb-12 bg-blue-50 p-6 rounded-lg shadow-sm">
+            <h2 class="text-2xl font-semibold mb-4 text-gray-800">Ready to run your own 5-minute benchmarks?</h2>
+            <p class="text-gray-600 mb-4">
+                Numbers above come from a laptop.
+                <br />
+                To do your own benchmarks on production servers
+            </p>
+            <a href="docs.html" class="inline-block bg-white text-blue-600 px-4 py-2 rounded hover:bg-gray-100">
+                Get Started</a>
+
+        </section>
+    </div>
+
+    <footer class="bg-gray-800 text-white text-center py-4">
+        <p>&copy; 2025 Roomzin. All rights reserved.</p>
+        <a href="https://www.linkedin.com/in/mehdi-javani/" target="_blank" rel="noopener noreferrer"
+            class="inline-block mt-2 hover:text-blue-400 transition">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 inline align-text-bottom" fill="none"
+                viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+            </svg>
+            <span class="ml-2">Contact</span>
+        </a>
+    </footer>
+
+    <script>
+        /* ---------- 1. Connections ---------- */
+        new Chart(document.getElementById('chartConn'), {
+            type: 'bar',
+            data: {
+                labels: ['50', '500', '1 000'],
+                datasets: [{
+                    label: 'P50 (ms)',
+                    data: [0.97, 0.38, 0.37],
+                    backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                    borderColor: 'rgba(54, 162, 235, 1)', borderWidth: 1
+                }, {
+                    label: 'P95 (ms)',
+                    data: [2.75, 0.76, 0.74],
+                    backgroundColor: 'rgba(255, 159, 64, 0.5)',
+                    borderColor: 'rgba(255, 159, 64, 1)', borderWidth: 1
+                }, {
+                    label: 'P99 (ms)',
+                    data: [3.0, 1.67, 1.31],
+                    backgroundColor: 'rgba(255, 99, 132, 0.5)',
+                    borderColor: 'rgba(255, 99, 132, 1)', borderWidth: 1
+                }]
+            },
+            options: { responsive: true, scales: { y: { beginAtZero: true, title: { display: true, text: 'Latency (ms)' } } } }
+        });
+
+        /* ---------- 2. Search Days ---------- */
+        new Chart(document.getElementById('chartDays'), {
+            type: 'line',
+            data: {
+                labels: ['3 days', '7 days', '14 days'],
+                datasets: [{
+                    label: 'P95 (ms)  – 10 k RPS',
+                    data: [2.75, 2.73, 5.56],
+                    borderColor: 'rgba(255, 159, 64, 1)', backgroundColor: 'rgba(255, 159, 64, 0.2)', fill: true, tension: 0.3
+                }, {
+                    label: 'P99 (ms) – 10 k RPS',
+                    data: [3.0, 4.81, 6.90],
+                    borderColor: 'rgba(255, 99, 132, 1)', backgroundColor: 'rgba(255, 99, 132, 0.2)', fill: true, tension: 0.3
+                }]
+            },
+            options: { responsive: true, scales: { y: { beginAtZero: true, title: { display: true, text: 'Latency (ms)' } } } }
+        });
+
+        /* ---------- 3. Result Limit ---------- */
+        new Chart(document.getElementById('chartLimit'), {
+            type: 'bar',
+            data: {
+                labels: ['300', '500'],
+                datasets: [{
+                    label: 'P50 (ms)',
+                    data: [0.97, 1.17],
+                    backgroundColor: 'rgba(54, 162, 235, 0.5)', borderColor: 'rgba(54, 162, 235, 1)', borderWidth: 1
+                }, {
+                    label: 'P95 (ms)',
+                    data: [2.75, 2.31],
+                    backgroundColor: 'rgba(255, 159, 64, 0.5)', borderColor: 'rgba(255, 159, 64, 1)', borderWidth: 1
+                }, {
+                    label: 'P99 (ms)',
+                    data: [3.0, 3.06],
+                    backgroundColor: 'rgba(255, 99, 132, 0.5)', borderColor: 'rgba(255, 99, 132, 1)', borderWidth: 1
+                }]
+            },
+            options: { responsive: true, scales: { y: { beginAtZero: true, title: { display: true, text: 'Latency (ms)' } } } }
+        });
+
+        /* ---------- 4. Real-life data growth chart ---------- */
+        new Chart(document.getElementById('chartDataGrowth'), {
+            type: 'bar',
+            data: {
+                labels: ['6 M records', '60 M records'],
+                datasets: [{
+                    label: 'P50 (ms)',
+                    data: [0.42, 0.44],
+                    backgroundColor: 'rgba(54, 162, 235, 0.5)', borderColor: 'rgba(54, 162, 235, 1)', borderWidth: 1
+                }, {
+                    label: 'P95 (ms)',
+                    data: [0.98, 1.05],
+                    backgroundColor: 'rgba(255, 159, 64, 0.5)', borderColor: 'rgba(255, 159, 64, 1)', borderWidth: 1
+                }]
+            },
+            options: { responsive: true, scales: { y: { beginAtZero: true, title: { display: true, text: 'Latency (ms)' } } } }
+        });
+    </script>
+</body>
+
+</html>
