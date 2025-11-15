@@ -143,7 +143,7 @@
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a href="#constants" class="nav-link dropdown-link">
+                            <a href="#codecs" class="nav-link dropdown-link">
                                 <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                     stroke-width="2">
                                     <rect x="3" y="9" width="18" height="12" rx="2" />
@@ -152,7 +152,7 @@
                                     <path d="M15 15V13H17V15H15Z" fill="currentColor" />
                                     <circle cx="12" cy="6" r="3" />
                                 </svg>
-                                Constants Sets
+                                Codecs Sets
                             </a>
                         </li>
                         <li class="nav-item">
@@ -369,8 +369,8 @@
                 <li><b>Window cap?</b> None hard-coded. Admins keep only the interval worth RAM—usually 15-90 days.</li>
                 <li><b>Tail-latency guard-rails</b> Admins can soft-cap “max nights” and “max results per query” so a 10
                     k/s TPS never drags MS into seconds; edge cases spill to the main DB.</li>
-                <li><b>Any constraints on data?</b> Just one: Up to 16 amenities and 8 cancellation rules must be
-                    defined in a constants.yml file. These limits are not hardcoded by the product but are set by
+                <li><b>Any constraints on data?</b> Just one: Up to 32 amenities and 8 cancellation rules must be
+                    defined in a codecs.yml file. These limits are not hardcoded by the product but are set by
                     companies to cover 95% of use cases—a deliberate trade-off for speed.</li>
                 <li><b>Redis killer?</b> No. Redis stays for static key/value chores; Roomzin adds travel-native schema
                     and single-query speed for hot searches.</li>
@@ -396,7 +396,7 @@
             <hr class="border-gray-300 mb-4" />
 
             <p class="mb-2"><b>Standalone</b><br>
-                One binary, three YAML files (config + auth + constants list).<br>
+                One binary, three YAML files (config + auth + codecs list).<br>
                 Run it. Done.</p>
 
             <p class="mb-2"><b>Cluster</b><br>
@@ -829,15 +829,15 @@ maintenance_hour: 3</code>
                         </div>
                     </div>
 
-                    <!-- constants.yml -->
+                    <!-- codecs.yml -->
                     <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
                         <div class="bg-gray-50 px-4 py-2 border-b border-gray-200">
-                            <h4 class="font-medium text-gray-800">constants.yml</h4>
+                            <h4 class="font-medium text-gray-800">codecs.yml</h4>
                         </div>
                         <div class="p-4">
                             <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
                                 <p class="text-yellow-700 text-sm">
-                                    <strong>Important:</strong> Defines allowed amenities (up to 16) and rate
+                                    <strong>Important:</strong> Defines allowed amenities (up to 32) and rate
                                     cancellation rules (up to 8).
                                     Order is critical for internal mapping. Changes require admin operation and full
                                     restart.
@@ -1340,7 +1340,7 @@ class QuickStart
 ├── configs/
 │   ├── roomzin.yml
 │   ├── auth.yml
-│   ├── constants.yml
+│   ├── codecs.yml
 ├── certs/
 │   ├── roomzin-0/
 │   │   ├── cert.pem
@@ -1364,11 +1364,11 @@ class QuickStart
                     <!-- Important Notes -->
                     <div class="space-y-4">
                         <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                            <h4 class="font-medium text-yellow-800 mb-2">About Constants File</h4>
+                            <h4 class="font-medium text-yellow-800 mb-2">About Codecs File</h4>
                             <p class="text-yellow-700 text-sm">
-                                The test cluster uses the provided <code>constants.yml</code> with predefined amenities
+                                The test cluster uses the provided <code>codecs.yml</code> with predefined amenities
                                 and rate cancellation rules.
-                                For production, your admin team will provide business-specific constants.
+                                For production, your admin team will provide business-specific codecs.
                             </p>
                         </div>
 
@@ -1406,7 +1406,7 @@ class QuickStart
                             </li>
                             <li class="flex items-start">
                                 <div class="w-2 h-2 bg-purple-500 rounded-full mt-1.5 mr-3 flex-shrink-0"></div>
-                                <span>Configures node communication and loads constants</span>
+                                <span>Configures node communication and loads codecs</span>
                             </li>
                             <li class="flex items-start">
                                 <div class="w-2 h-2 bg-purple-500 rounded-full mt-1.5 mr-3 flex-shrink-0"></div>
@@ -1567,22 +1567,22 @@ class QuickStart
             <h2 class="text-xl font-semibold mb-4">Constraints by Design</h2>
             <hr class="border-gray-300 mb-4" />
             <p class="mb-4 text-gray-700">
-                Amenities and rate cancellation rules must be defined in a <code>constants.yml</code> file placed next
-                to the configuration file. This file follows a specific schema, with up to 16 amenities and 8 rate
+                Amenities and rate cancellation rules must be defined in a <code>codecs.yml</code> file placed next
+                to the configuration file. This file follows a specific schema, with up to 32 amenities and 8 rate
                 cancellation rules. The order of entries is critical, as Roomzin uses this file for internal mapping.
-                Any change to <code>constants.yml</code> will invalidate existing queries, requiring a full restart of
+                Any change to <code>codecs.yml</code> will invalidate existing queries, requiring a full restart of
                 the cluster or standalone instance and dropping all snapshots, as they will no longer be valid.
-                Modifications to this file should be treated as an admin-level operation. While the limits of 16
+                Modifications to this file should be treated as an admin-level operation. While the limits of 32
                 amenities and 8 rate cancellation rules may seem restrictive, they are a deliberate trade-off for
                 performance.
             </p>
-            <p class="mb-4 text-gray-700">The schema for <code>constants.yml</code> is:</p>
+            <p class="mb-4 text-gray-700">The schema for <code>codecs.yml</code> is:</p>
             <pre class="p-4 rounded mb-6">
                 <code style="padding: 0 10px !important;margin-top: -2em !important;">
 amenities:
   - wifi
   - pool
-  # ... up to 16 entries
+  # ... up to 32 entries
 rate_cancels:
   - free_cancellation
   - non_refundable
@@ -1874,14 +1874,14 @@ rate_cancels:
             <br />
             <p class="mb-2 font-semibold">Stand-alone</p>
             <p class="mb-4">Single-node or development environments: just drop the binary next to its config, auth and
-                constants.yml
+                codecs.yml
                 file and run.</p>
             <pre><code>roomzin run --config /path/to/roomzin.yml</code></pre>
 
             <hr />
             <br />
             <p class="mb-2 font-semibold">Clustered</p>
-            <p class="mb-4">High-availability production cluster: place the required files (config, auth, constants,
+            <p class="mb-4">High-availability production cluster: place the required files (config, auth, codecs,
                 *.pem) on each
                 machine and start the same binary as shown below. Nodes auto-discover each other—only a single seed is
                 enough to pull the full peer list, provided the cluster graph stays connected.</p>
@@ -2056,26 +2056,26 @@ prop_1,room_1,2025-10-03,7,120,free_cancellation|non_refundable|pay_at_property|
                 endpoint
                 (admin role required).</p>
         </section>
-        <section id="constants" class="content-section">
+        <section id="codecs" class="content-section">
             <h2 class="text-2xl font-semibold mb-4">Authentication</h2>
             <hr class="border-gray-300 mb-4" />
             <p class="mb-4 text-gray-700">
-                Amenities and rate cancellation rules must be defined in a <code>constants.yml</code> file placed next
-                to the configuration file. This file follows a specific schema, with up to 16 amenities and 8 rate
+                Amenities and rate cancellation rules must be defined in a <code>codecs.yml</code> file placed next
+                to the configuration file. This file follows a specific schema, with up to 32 amenities and 8 rate
                 cancellation rules. The order of entries is critical, as Roomzin uses this file for internal mapping.
-                Any change to <code>constants.yml</code> will invalidate existing queries, requiring a full restart of
+                Any change to <code>codecs.yml</code> will invalidate existing queries, requiring a full restart of
                 the cluster or standalone instance and dropping all snapshots, as they will no longer be valid.
-                Modifications to this file should be treated as an admin-level operation. While the limits of 16
+                Modifications to this file should be treated as an admin-level operation. While the limits of 32
                 amenities and 8 rate cancellation rules may seem restrictive, they are a deliberate trade-off for
                 performance.
             </p>
-            <p class="mb-4 text-gray-700">The schema for <code>constants.yml</code> is:</p>
+            <p class="mb-4 text-gray-700">The schema for <code>codecs.yml</code> is:</p>
             <pre class="rounded">
         <code style="padding: 0 10px !important;margin-top: -2em !important;">
 amenities:
   - wifi
   - pool
-  # ... up to 16 entries
+  # ... up to 32 entries
 rate_cancels:
   - free_cancellation
   - non_refundable
@@ -2557,16 +2557,16 @@ snapshot_trigger_count: 10000  # Raft WAL entries threshold for snapshot (defaul
                                     </td>
                                 </tr>
 
-                                <!-- Constants -->
+                                <!-- Codecs -->
                                 <tr class="hover:bg-gray-50">
-                                    <td class="border border-gray-300 px-4 py-3 font-mono text-sm">/constants</td>
+                                    <td class="border border-gray-300 px-4 py-3 font-mono text-sm">/codecs</td>
                                     <td class="border border-gray-300 px-4 py-3">GET</td>
                                     <td class="border border-gray-300 px-4 py-3">
                                         <div class="space-y-1">
-                                            <p><strong>Retrieve system constants</strong></p>
+                                            <p><strong>Retrieve system codecs</strong></p>
                                             <p class="text-sm text-gray-600">
                                                 Returns configured amenities and rate cancellation rules from
-                                                constants.yml
+                                                codecs.yml
                                             </p>
                                         </div>
                                     </td>
