@@ -1209,8 +1209,8 @@ class QuickStart
     }
 }</code></pre>
                     </div>
-                <div id="nodejs-tab" class="tab-content p-4 rounded-b hidden">
-                <pre class="overflow-x-auto"><code>import { SingleClient } from 'roomzin-js';
+                    <div id="nodejs-tab" class="tab-content p-4 rounded-b hidden">
+                        <pre class="overflow-x-auto"><code>import { SingleClient } from 'roomzin-js';
 import { CacheClientAPI } from 'roomzin-js';
 
 async function main() {
@@ -1276,7 +1276,7 @@ async function main() {
         await client.close?.();
     }
 }</code></pre>
-                    </div>   
+                    </div>
                 </div>
             </div>
 
@@ -1504,7 +1504,8 @@ async function main() {
                         <div>
                             <h4 class="font-medium mb-2">Test with SDKs</h4>
                             <p class="text-gray-700 text-sm mb-3">
-                                Use any SDK (Go, Java, Python, C#, Node.js) to query the cluster. Configure with seed hosts
+                                Use any SDK (Go, Java, Python, C#, Node.js) to query the cluster. Configure with seed
+                                hosts
                                 (<code>roomzin-0,roomzin-1,roomzin-2</code>), TCP port 7777, and API port 8080.
                             </p>
                             <p class="text-gray-600 text-sm">
@@ -1788,7 +1789,8 @@ rate_cancels:
                             SDK & Client Interaction
                         </h3>
                         <p class="text-gray-700 mb-4">
-                            Roomzin's SDKs (Go, Java, Python, C#, Node.js) are optimized for performance and ease of use,
+                            Roomzin's SDKs (Go, Java, Python, C#, Node.js) are optimized for performance and ease of
+                            use,
                             leveraging the custom binary protocol for efficient communication.
                         </p>
                         <div class="space-y-3">
@@ -3041,7 +3043,8 @@ snapshot_trigger_count: 10000  # Raft WAL entries threshold for snapshot (defaul
                 <!-- Overview -->
                 <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
                     <p class="text-blue-700">
-                        Roomzin provides SDKs in Go, Java, Python, C#, and Node.js for querying and managing the in-memory
+                        Roomzin provides SDKs in Go, Java, Python, C#, and Node.js for querying and managing the
+                        in-memory
                         inventory engine over TCP. SDKs handle automatic routing, failover, load balancing, and
                         connection pooling. Select an SDK from the left menu to view its documentation.
                     </p>
@@ -3536,6 +3539,72 @@ func GetClient() (api.CacheClientAPI, error) {
                 <p class="mb-4">See Data Format and Limitations for valid amenities and rate cancellation
                     options.</p>
             </div>
+            <br />
+            <hr />
+            <br />
+            <!-- --------------  Error handling  -------------- -->
+            <h4 class="text-lg font-semibold mb-2">Error handling</h4>
+            <p class="mb-4">
+                All methods return <code>*RoomzinError</code> (implements <code>error</code>).
+                Inspect <code>err.Kind</code> or use the helpers <code>IsClient</code>, <code>IsRequest</code>,
+                <code>IsRetry</code>, <code>IsInternal</code>
+                to decide whether the call should be retried, skipped, or escalated.
+            </p>
+
+            <h5 class="text-md font-semibold mb-2">Request-level codes (KindRequest)</h5>
+            <ul class="list-disc pl-6 mb-4">
+                <li>
+                    <code>VALIDATION_ERROR</code> – payload failed a rule (bad UUID, date in the past, negative price,
+                    …).
+                    <em>Typical callers:</em> <code>SetProp</code>, <code>SetRoomPkg</code>, <code>SetRoomAvl</code>,
+                    <code>IncRoomAvl</code>, <code>DecRoomAvl</code>, <code>Search*</code>, <code>Del*</code>.
+                </li>
+                <li>
+                    <code>NOT_FOUND</code> – the requested property / room-type / date does not exist.
+                    <em>Typical callers:</em> <code>GetPropRoomDay</code>, <code>DelRoomDay</code>,
+                    <code>DelPropRoom</code>, <code>DelProp</code>, <code>DelSegment</code>.
+                </li>
+                <li>
+                    <code>OVERFLOW</code> – increment would exceed 255 units of availability.
+                    <em>Typical caller:</em> <code>IncRoomAvl</code>.
+                </li>
+                <li>
+                    <code>UNDERFLOW</code> – decrement would drop below 0 availability.
+                    <em>Typical caller:</em> <code>DecRoomAvl</code>.
+                </li>
+                <li>
+                    <code>FORBIDDEN</code> – auth token valid but lacks the role required for this command.
+                    <em>Can be returned by any method.</em>
+                </li>
+            </ul>
+
+            <h5 class="text-md font-semibold mb-2">Other common codes</h5>
+            <ul class="list-disc pl-6 mb-4">
+                <li><code>AUTH_ERROR</code> (KindClient) – missing or invalid token.</li>
+                <li><code>429</code> / <code>503</code> / <code>308</code> (KindRetry) – back-off and retry with
+                    exponential delay.</li>
+                <li><code>PARSE_ERROR</code> / <code>RESPONSE_ERROR</code> (KindInternal) – server returned unexpected
+                    payload; report to support.</li>
+            </ul>
+
+            <p class="mb-4">
+                Example defensive usage:
+            </p>
+            <pre><code class="language-go">if err := client.SetRoomPkg(ctx, payload); err != nil {
+    var rz *types.RoomzinError
+    if errors.As(err, &rz) {
+        switch {
+        case types.IsRequest(err):
+            log.Printf("business rule failed: %s", rz.Code)
+        case types.IsRetry(err):
+            // back-off & retry
+        default:
+            return fmt.Errorf("fatal: %w", err)
+        }
+    }
+}
+</code></pre>
+            <!-- --------------  /Error handling  -------------- -->
         </section>
         <section id="sdks-java" class="content-section">
             <div class="container mx-auto px-4 py-8">
@@ -3808,6 +3877,70 @@ try (CacheClientApi client = new ClusterClient(config)) {
                 <p class="mb-4">See Data Format and Limitations for valid amenities and rate cancellation
                     options.</p>
             </div>
+            <br />
+            <hr />
+            <br />
+            <!-- --------------  Error handling  -------------- -->
+            <h4 class="text-lg font-semibold mb-2">Error handling</h4>
+            <p class="mb-4">
+                All methods throw <code>RoomzinException</code> (extends <code>Exception</code>).
+                Inspect <code>e.getKind()</code> or use the helpers <code>isClient()</code>, <code>isRequest()</code>,
+                <code>isRetry()</code>, <code>isInternal()</code>
+                to decide whether the call should be retried, skipped, or escalated.
+            </p>
+
+            <h5 class="text-md font-semibold mb-2">Request-level codes (Kind.REQUEST)</h5>
+            <ul class="list-disc pl-6 mb-4">
+                <li>
+                    <code>VALIDATION_ERROR</code> – payload failed a rule (bad UUID, date in the past, negative price,
+                    …).
+                    <em>Typical callers:</em> <code>setProp</code>, <code>setRoomPkg</code>, <code>setRoomAvl</code>,
+                    <code>incRoomAvl</code>, <code>decRoomAvl</code>, <code>search*</code>, <code>del*</code>.
+                </li>
+                <li>
+                    <code>NOT_FOUND</code> – the requested property / room-type / date does not exist.
+                    <em>Typical callers:</em> <code>getPropRoomDay</code>, <code>delRoomDay</code>,
+                    <code>delPropRoom</code>, <code>delProp</code>, <code>delSegment</code>.
+                </li>
+                <li>
+                    <code>OVERFLOW</code> – increment would exceed 255 units of availability.
+                    <em>Typical caller:</em> <code>incRoomAvl</code>.
+                </li>
+                <li>
+                    <code>UNDERFLOW</code> – decrement would drop below 0 availability.
+                    <em>Typical caller:</em> <code>decRoomAvl</code>.
+                </li>
+                <li>
+                    <code>FORBIDDEN</code> – auth token valid but lacks the role required for this command.
+                    <em>Can be returned by any method.</em>
+                </li>
+            </ul>
+
+            <h5 class="text-md font-semibold mb-2">Other common codes</h5>
+            <ul class="list-disc pl-6 mb-4">
+                <li><code>AUTH_ERROR</code> (Kind.CLIENT) – missing or invalid token.</li>
+                <li><code>429</code> / <code>503</code> / <code>308</code> (Kind.RETRY) – back-off and retry with
+                    exponential delay.</li>
+                <li><code>PARSE_ERROR</code> / <code>RESPONSE_ERROR</code> (Kind.INTERNAL) – server returned unexpected
+                    payload; report to support.</li>
+            </ul>
+
+            <p class="mb-4">
+                Example defensive usage:
+            </p>
+            <pre><code class="language-java">try {
+    client.setRoomPkg(payload);
+} catch (RoomzinException e) {
+    if (e.isRequest()) {
+        System.out.println("business rule failed: " + e.getCode());
+    } else if (e.isRetry()) {
+        // back-off & retry
+    } else {
+        throw new RuntimeException("fatal", e);
+    }
+}
+</code></pre>
+            <!-- --------------  /Error handling  -------------- -->
         </section>
         <section id="sdks-python" class="content-section">
             <div class="container mx-auto px-4 py-8">
@@ -4081,6 +4214,72 @@ finally:
                 <p class="mb-4">See Data Format and Limitations for valid amenities and rate cancellation
                     options.</p>
             </div>
+            <br />
+            <hr />
+            <br />
+            <!-- --------------  Error handling  -------------- -->
+            <h4 class="text-lg font-semibold mb-2">Error handling</h4>
+            <p class="mb-4">
+                All methods raise <code>RoomzinError</code> (extends <code>Exception</code>).
+                Inspect <code>err.kind</code> or use the helpers <code>is_client()</code>, <code>is_request()</code>,
+                <code>is_retry()</code>, <code>is_internal()</code>
+                to decide whether the call should be retried, skipped, or escalated.
+            </p>
+
+            <h5 class="text-md font-semibold mb-2">Request-level codes (ErrorKind.REQUEST)</h5>
+            <ul class="list-disc pl-6 mb-4">
+                <li>
+                    <code>VALIDATION_ERROR</code> – payload failed a rule (bad UUID, date in the past, negative price,
+                    …).
+                    <em>Typical callers:</em> <code>set_prop</code>, <code>set_room_pkg</code>,
+                    <code>set_room_avl</code>, <code>inc_room_avl</code>, <code>dec_room_avl</code>,
+                    <code>search_*</code>, <code>del_*</code>.
+                </li>
+                <li>
+                    <code>NOT_FOUND</code> – the requested property / room-type / date does not exist.
+                    <em>Typical callers:</em> <code>get_prop_room_day</code>, <code>del_room_day</code>,
+                    <code>del_prop_room</code>, <code>del_prop</code>, <code>del_segment</code>.
+                </li>
+                <li>
+                    <code>OVERFLOW</code> – increment would exceed 255 units of availability.
+                    <em>Typical caller:</em> <code>inc_room_avl</code>.
+                </li>
+                <li>
+                    <code>UNDERFLOW</code> – decrement would drop below 0 availability.
+                    <em>Typical caller:</em> <code>dec_room_avl</code>.
+                </li>
+                <li>
+                    <code>FORBIDDEN</code> – auth token valid but lacks the role required for this command.
+                    <em>Can be returned by any method.</em>
+                </li>
+            </ul>
+
+            <h5 class="text-md font-semibold mb-2">Other common codes</h5>
+            <ul class="list-disc pl-6 mb-4">
+                <li><code>AUTH_ERROR</code> (ErrorKind.CLIENT) – missing or invalid token.</li>
+                <li><code>429</code> / <code>503</code> / <code>308</code> (ErrorKind.RETRY) – back-off and retry with
+                    exponential delay.</li>
+                <li><code>PARSE_ERROR</code> / <code>RESPONSE_ERROR</code> (ErrorKind.INTERNAL) – server returned
+                    unexpected payload; report to support.</li>
+            </ul>
+
+            <p class="mb-4">
+                Example defensive usage:
+            </p>
+            <pre><code class="language-python">from roomzin_py.exceptions import RoomzinError, is_request, is_retry
+
+try:
+    client.set_room_pkg(payload)
+except RoomzinError as e:
+    if is_request(e):
+        print(f"business rule failed: {e.code}")
+    elif is_retry(e):
+        # back-off & retry
+        pass
+    else:
+        raise
+</code></pre>
+            <!-- --------------  /Error handling  -------------- -->
         </section>
         <section id="sdks-csharp" class="content-section">
             <div class="container mx-auto px-4 py-8">
@@ -4347,26 +4546,102 @@ await using var client = Client.New(config);
                 <p class="mb-4">See Data Format and Limitations for valid amenities and rate cancellation
                     options.</p>
             </div>
+            <br />
+            <hr />
+            <br />
+            <!-- --------------  Error handling  -------------- -->
+            <h4 class="text-lg font-semibold mb-2">Error handling</h4>
+            <p class="mb-4">
+                All async methods throw <code>RoomzinException</code> (extends <code>Exception</code>).
+                Inspect <code>ex.Kind</code> or use the helpers <code>RoomzinException.IsClient(ex)</code>,
+                <code>IsRequest(ex)</code>, <code>IsRetry(ex)</code>, <code>IsInternal(ex)</code>
+                to decide whether the call should be retried, skipped, or escalated.
+            </p>
+
+            <h5 class="text-md font-semibold mb-2">Request-level codes (ErrorKind.Request)</h5>
+            <ul class="list-disc pl-6 mb-4">
+                <li>
+                    <code>VALIDATION_ERROR</code> – payload failed a rule (bad UUID, date in the past, negative price,
+                    …).
+                    <em>Typical callers:</em> <code>SetPropAsync</code>, <code>SetRoomPkgAsync</code>,
+                    <code>SetRoomAvlAsync</code>, <code>IncRoomAvlAsync</code>, <code>DecRoomAvlAsync</code>,
+                    <code>Search*Async</code>, <code>Del*Async</code>.
+                </li>
+                <li>
+                    <code>NOT_FOUND</code> – the requested property / room-type / date does not exist.
+                    <em>Typical callers:</em> <code>GetPropRoomDayAsync</code>, <code>DelRoomDayAsync</code>,
+                    <code>DelPropRoomAsync</code>, <code>DelPropAsync</code>, <code>DelSegmentAsync</code>.
+                </li>
+                <li>
+                    <code>OVERFLOW</code> – increment would exceed 255 units of availability.
+                    <em>Typical caller:</em> <code>IncRoomAvlAsync</code>.
+                </li>
+                <li>
+                    <code>UNDERFLOW</code> – decrement would drop below 0 availability.
+                    <em>Typical caller:</em> <code>DecRoomAvlAsync</code>.
+                </li>
+                <li>
+                    <code>FORBIDDEN</code> – auth token valid but lacks the role required for this command.
+                    <em>Can be returned by any method.</em>
+                </li>
+            </ul>
+
+            <h5 class="text-md font-semibold mb-2">Other common codes</h5>
+            <ul class="list-disc pl-6 mb-4">
+                <li><code>AUTH_ERROR</code> (ErrorKind.Client) – missing or invalid token.</li>
+                <li><code>429</code> / <code>503</code> / <code>308</code> (ErrorKind.Retry) – back-off and retry with
+                    exponential delay.</li>
+                <li><code>PARSE_ERROR</code> / <code>RESPONSE_ERROR</code> (ErrorKind.Internal) – server returned
+                    unexpected payload; report to support.</li>
+            </ul>
+
+            <p class="mb-4">
+                Example defensive usage:
+            </p>
+            <pre><code class="language-csharp">try
+{
+    await client.SetRoomPkgAsync(payload);
+}
+catch (RoomzinException ex) when (RoomzinException.IsRequest(ex))
+{
+    Console.WriteLine($"business rule failed: {ex.Code}");
+}
+catch (RoomzinException ex) when (RoomzinException.IsRetry(ex))
+{
+    // back-off & retry
+}
+catch (RoomzinException ex)
+{
+    throw new InvalidOperationException("fatal", ex);
+}
+</code></pre>
+            <!-- --------------  /Error handling  -------------- -->
         </section>
         <section id="sdks-nodejs" class="content-section">
-    <div class="container mx-auto px-4 py-8">
-        <h3 class="text-xl font-semibold mb-2">Node.js / TypeScript SDK</h3>
-        <p class="mb-4">The Node.js SDK (written in TypeScript) provides a modern, fully-typed interface for interacting with Roomzin in both standalone and clustered modes. It supports the same property management, availability queries, and administrative operations as the other SDKs. The package is published on npm and can be installed publicly.</p>
+            <div class="container mx-auto px-4 py-8">
+                <h3 class="text-xl font-semibold mb-2">Node.js / TypeScript SDK</h3>
+                <p class="mb-4">The Node.js SDK (written in TypeScript) provides a modern, fully-typed interface for
+                    interacting with Roomzin in both standalone and clustered modes. It supports the same property
+                    management, availability queries, and administrative operations as the other SDKs. The package is
+                    published on npm and can be installed publicly.</p>
 
-        <h4 class="text-lg font-semibold mb-2">Setup</h4>
-        <p class="mb-4">Install the SDK using npm, yarn or pnpm.</p>
-        <pre><code class="language-bash">npm install roomzin-js
+                <h4 class="text-lg font-semibold mb-2">Setup</h4>
+                <p class="mb-4">Install the SDK using npm, yarn or pnpm.</p>
+                <pre><code class="language-bash">npm install roomzin-js
 </code></pre>
-        <br />
-        <pre><code class="language-typescript">import { SingleClient, ClusterClient } from 'roomzin-js';
+                <br />
+                <pre><code class="language-typescript">import { SingleClient, ClusterClient } from 'roomzin-js';
 import type { CacheClientAPI } from 'roomzin-js';
 </code></pre>
 
-        <h4 class="text-lg font-semibold mb-2">Configuration</h4>
-        <p class="mb-4">Configure the SDK for standalone or clustered mode. Both modes expose the same <code>CacheClientAPI</code> interface. Required fields include host(s), TCP port, and authentication token (see Authentication section).</p>
+                <h4 class="text-lg font-semibold mb-2">Configuration</h4>
+                <p class="mb-4">Configure the SDK for standalone or clustered mode. Both modes expose the same
+                    <code>CacheClientAPI</code> interface. Required fields include host(s), TCP port, and authentication
+                    token (see Authentication section).
+                </p>
 
-        <h5 class="text-md font-semibold mb-2">Standalone Configuration</h5>
-        <pre><code class="language-typescript">import { SingleClient } from 'roomzin-js';
+                <h5 class="text-md font-semibold mb-2">Standalone Configuration</h5>
+                <pre><code class="language-typescript">import { SingleClient } from 'roomzin-js';
 
 const client: CacheClientAPI = await SingleClient.create({
     host: '127.0.0.1',
@@ -4379,17 +4654,17 @@ const client: CacheClientAPI = await SingleClient.create({
 // Use client.*
 await client.close(); // when done
 </code></pre>
-        <p class="mb-4">Fields (passed as a plain object):</p>
-        <ul class="list-disc pl-6 mb-4">
-            <li><code>host</code>: Server address (required, e.g., "127.0.0.1").</li>
-            <li><code>tcpPort</code>: TCP port for queries (required).</li>
-            <li><code>authToken</code>: Bearer token for authentication (required, see Authentication).</li>
-            <li><code>timeout</code>: Request timeout in milliseconds (default: 2000).</li>
-            <li><code>keepAlive</code>: TCP keep-alive interval in milliseconds (default: 30000).</li>
-        </ul>
+                <p class="mb-4">Fields (passed as a plain object):</p>
+                <ul class="list-disc pl-6 mb-4">
+                    <li><code>host</code>: Server address (required, e.g., "127.0.0.1").</li>
+                    <li><code>tcpPort</code>: TCP port for queries (required).</li>
+                    <li><code>authToken</code>: Bearer token for authentication (required, see Authentication).</li>
+                    <li><code>timeout</code>: Request timeout in milliseconds (default: 2000).</li>
+                    <li><code>keepAlive</code>: TCP keep-alive interval in milliseconds (default: 30000).</li>
+                </ul>
 
-        <h5 class="text-md font-semibold mb-2">Clustered Configuration</h5>
-        <pre><code class="language-typescript">import { ClusterClient, ClusterConfigBuilder } from 'roomzin-js';
+                <h5 class="text-md font-semibold mb-2">Clustered Configuration</h5>
+                <pre><code class="language-typescript">import { ClusterClient, ClusterConfigBuilder } from 'roomzin-js';
 
 const config = ClusterConfigBuilder.new()
     .withSeedHosts('roomzin-0.localhost,roomzin-1.localhost,roomzin-2.localhost')
@@ -4407,77 +4682,261 @@ const client = await ClusterClient.create(config);
 // Use client.*
 await client.close(); // when done
 </code></pre>
-            <p class="mb-4">Fields (via <code>ClusterConfigBuilder</code>):</p>
-            <ul class="list-disc pl-6 mb-4">
-                <li><code>seedHosts</code>: Comma-separated list of seed node hostnames/IPs (required).</li>
-                <li><code>tcpPort</code>: TCP port for queries (required).</li>
-                <li><code>apiPort</code>: HTTP port for the admin/cluster API (required).</li>
-                <li><code>authToken</code>: Bearer token for authentication (required).</li>
-                <li><code>timeout</code>: TCP request timeout in ms (default: 2000).</li>
-                <li><code>httpTimeout</code>: HTTP request timeout in ms (default: 5000).</li>
-                <li><code>keepAlive</code>: TCP keep-alive interval in ms (default: 30000).</li>
-                <li><code>maxActiveConns</code>: Maximum concurrent TCP connections per node (default: 100).</li>
-            </ul>
+                <p class="mb-4">Fields (via <code>ClusterConfigBuilder</code>):</p>
+                <ul class="list-disc pl-6 mb-4">
+                    <li><code>seedHosts</code>: Comma-separated list of seed node hostnames/IPs (required).</li>
+                    <li><code>tcpPort</code>: TCP port for queries (required).</li>
+                    <li><code>apiPort</code>: HTTP port for the admin/cluster API (required).</li>
+                    <li><code>authToken</code>: Bearer token for authentication (required).</li>
+                    <li><code>timeout</code>: TCP request timeout in ms (default: 2000).</li>
+                    <li><code>httpTimeout</code>: HTTP request timeout in ms (default: 5000).</li>
+                    <li><code>keepAlive</code>: TCP keep-alive interval in ms (default: 30000).</li>
+                    <li><code>maxActiveConns</code>: Maximum concurrent TCP connections per node (default: 100).</li>
+                </ul>
 
-            <h4 class="text-lg font-semibold mb-2">API Methods</h4>
-            <p class="mb-4">All operations are exposed through the <code>CacheClientAPI</code> interface. Every method is asynchronous and requires the appropriate authentication role (see Authentication).</p>
+                <h4 class="text-lg font-semibold mb-2">API Methods</h4>
+                <p class="mb-4">All operations are exposed through the <code>CacheClientAPI</code> interface. Every
+                    method is asynchronous and requires the appropriate authentication role (see Authentication).</p>
 
-            <div class="overflow-x-auto mb-4">
-                <table class="table-minimal">
-                    <thead>
-                        <tr>
-                            <th class="px-4 py-2 text-left">Method</th>
-                            <th class="px-4 py-2 text-left">Description</th>
-                            <th class="px-4 py-2 text-left">Input</th>
-                            <th class="px-4 py-2 text-left">Output</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr><td><code>setProp</code></td><td>Add or update a property</td><td><code>SetPropPayload</code></td><td><code>Promise&lt;void&gt;</code></td></tr>
-                        <tr><td colspan="4"></td></tr>
-                        <tr><td><code>setRoomPkg</code></td><td>Set room availability, price, and rate cancellation</td><td><code>SetRoomPkgPayload</code></td><td><code>Promise&lt;void&gt;</code></td></tr>
-                        <tr><td colspan="4"></td></tr>
-                        <tr><td><code>setRoomAvl</code></td><td>Absolute set of room availability</td><td><code>UpdRoomAvlPayload</code></td><td><code>Promise&lt;number&gt;</code></td></tr>
-                        <tr><td><code>incRoomAvl</code></td><td>Increment room availability</td><td><code>UpdRoomAvlPayload</code></td><td><code>Promise&lt;number&gt;</code></td></tr>
-                        <tr><td><code>decRoomAvl</code></td><td>Decrement room availability</td><td><code>UpdRoomAvlPayload</code></td><td><code>Promise&lt;number&gt;</code></td></tr>
-                        <tr><td colspan="4"></td></tr>
-                        <tr><td><code>searchAvail</code></td><td>Search available rooms by criteria</td><td><code>SearchAvailPayload</code></td><td><code>Promise&lt;PropertyAvail[]&gt;</code></td></tr>
-                        <tr><td colspan="4"></td></tr>
-                        <tr><td><code>searchProp</code></td><td>Search properties by segment, area, type, etc.</td><td><code>SearchPropPayload</code></td><td><code>Promise&lt;string[]&gt;</code></td></tr>
-                        <tr><td><code>propExist</code></td><td>Check if a property exists</td><td><code>string</code></td><td><code>Promise&lt;boolean&gt;</code></td></tr>
-                        <tr><td><code>propRoomExist</code></td><td>Check if a room type exists for a property</td><td><code>PropRoomExistPayload</code></td><td><code>Promise&lt;boolean&gt;</code></td></tr>
-                        <tr><td><code>propRoomList</code></td><td>List room types for a property</td><td><code>string</code></td><td><code>Promise&lt;string[]&gt;</code></td></tr>
-                        <tr><td><code>propRoomDateList</code></td><td>List dates with availability for a room type</td><td><code>PropRoomDateListPayload</code></td><td><code>Promise&lt;string[]&gt;</code></td></tr>
-                        <tr><td><code>getPropRoomDay</code></td><td>Get room details for a specific date</td><td><code>GetRoomDayRequest</code></td><td><code>Promise&lt;GetRoomDayResult&gt;</code></td></tr>
-                        <tr><td><code>getSegments</code></td><td>List all segments and their property counts</td><td>None</td><td><code>Promise&lt;SegmentInfo[]&gt;</code></td></tr>
-                        <tr><td><code>getCodecs</code></td><td>Get supported amenities and cancellation rules as codecs</td><td>None</td><td><code>Promise&lt;Codecs&gt;</code></td></tr>
-                        <tr><td colspan="4"></td></tr>
-                        <tr><td><code>delRoomDay</code></td><td>Delete a room’s data for a specific date</td><td><code>DelRoomDayRequest</code></td><td><code>Promise&lt;void&gt;</code></td></tr>
-                        <tr><td><code>delPropDay</code></td><td>Delete all room data for a property on a date</td><td><code>DelPropDayRequest</code></td><td><code>Promise&lt;void&gt;</code></td></tr>
-                        <tr><td><code>delPropRoom</code></td><td>Delete a room type from a property</td><td><code>DelPropRoomPayload</code></td><td><code>Promise&lt;void&gt;</code></td></tr>
-                        <tr><td><code>delProp</code></td><td>Delete a property</td><td><code>string</code></td><td><code>Promise&lt;void&gt;</code></td></tr>
-                        <tr><td><code>delSegment</code></td><td>Delete all properties in a segment</td><td><code>string</code></td><td><code>Promise&lt;void&gt;</code></td></tr>
-                        <tr><td><code>close</code></td><td>Close connections and release resources</td><td>None</td><td><code>Promise&lt;void&gt;</code></td></tr>
-                    </tbody>
-                </table>
+                <div class="overflow-x-auto mb-4">
+                    <table class="table-minimal">
+                        <thead>
+                            <tr>
+                                <th class="px-4 py-2 text-left">Method</th>
+                                <th class="px-4 py-2 text-left">Description</th>
+                                <th class="px-4 py-2 text-left">Input</th>
+                                <th class="px-4 py-2 text-left">Output</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>setProp</code></td>
+                                <td>Add or update a property</td>
+                                <td><code>SetPropPayload</code></td>
+                                <td><code>Promise&lt;void&gt;</code></td>
+                            </tr>
+                            <tr>
+                                <td colspan="4"></td>
+                            </tr>
+                            <tr>
+                                <td><code>setRoomPkg</code></td>
+                                <td>Set room availability, price, and rate cancellation</td>
+                                <td><code>SetRoomPkgPayload</code></td>
+                                <td><code>Promise&lt;void&gt;</code></td>
+                            </tr>
+                            <tr>
+                                <td colspan="4"></td>
+                            </tr>
+                            <tr>
+                                <td><code>setRoomAvl</code></td>
+                                <td>Absolute set of room availability</td>
+                                <td><code>UpdRoomAvlPayload</code></td>
+                                <td><code>Promise&lt;number&gt;</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>incRoomAvl</code></td>
+                                <td>Increment room availability</td>
+                                <td><code>UpdRoomAvlPayload</code></td>
+                                <td><code>Promise&lt;number&gt;</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>decRoomAvl</code></td>
+                                <td>Decrement room availability</td>
+                                <td><code>UpdRoomAvlPayload</code></td>
+                                <td><code>Promise&lt;number&gt;</code></td>
+                            </tr>
+                            <tr>
+                                <td colspan="4"></td>
+                            </tr>
+                            <tr>
+                                <td><code>searchAvail</code></td>
+                                <td>Search available rooms by criteria</td>
+                                <td><code>SearchAvailPayload</code></td>
+                                <td><code>Promise&lt;PropertyAvail[]&gt;</code></td>
+                            </tr>
+                            <tr>
+                                <td colspan="4"></td>
+                            </tr>
+                            <tr>
+                                <td><code>searchProp</code></td>
+                                <td>Search properties by segment, area, type, etc.</td>
+                                <td><code>SearchPropPayload</code></td>
+                                <td><code>Promise&lt;string[]&gt;</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>propExist</code></td>
+                                <td>Check if a property exists</td>
+                                <td><code>string</code></td>
+                                <td><code>Promise&lt;boolean&gt;</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>propRoomExist</code></td>
+                                <td>Check if a room type exists for a property</td>
+                                <td><code>PropRoomExistPayload</code></td>
+                                <td><code>Promise&lt;boolean&gt;</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>propRoomList</code></td>
+                                <td>List room types for a property</td>
+                                <td><code>string</code></td>
+                                <td><code>Promise&lt;string[]&gt;</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>propRoomDateList</code></td>
+                                <td>List dates with availability for a room type</td>
+                                <td><code>PropRoomDateListPayload</code></td>
+                                <td><code>Promise&lt;string[]&gt;</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>getPropRoomDay</code></td>
+                                <td>Get room details for a specific date</td>
+                                <td><code>GetRoomDayRequest</code></td>
+                                <td><code>Promise&lt;GetRoomDayResult&gt;</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>getSegments</code></td>
+                                <td>List all segments and their property counts</td>
+                                <td>None</td>
+                                <td><code>Promise&lt;SegmentInfo[]&gt;</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>getCodecs</code></td>
+                                <td>Get supported amenities and cancellation rules as codecs</td>
+                                <td>None</td>
+                                <td><code>Promise&lt;Codecs&gt;</code></td>
+                            </tr>
+                            <tr>
+                                <td colspan="4"></td>
+                            </tr>
+                            <tr>
+                                <td><code>delRoomDay</code></td>
+                                <td>Delete a room’s data for a specific date</td>
+                                <td><code>DelRoomDayRequest</code></td>
+                                <td><code>Promise&lt;void&gt;</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>delPropDay</code></td>
+                                <td>Delete all room data for a property on a date</td>
+                                <td><code>DelPropDayRequest</code></td>
+                                <td><code>Promise&lt;void&gt;</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>delPropRoom</code></td>
+                                <td>Delete a room type from a property</td>
+                                <td><code>DelPropRoomPayload</code></td>
+                                <td><code>Promise&lt;void&gt;</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>delProp</code></td>
+                                <td>Delete a property</td>
+                                <td><code>string</code></td>
+                                <td><code>Promise&lt;void&gt;</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>delSegment</code></td>
+                                <td>Delete all properties in a segment</td>
+                                <td><code>string</code></td>
+                                <td><code>Promise&lt;void&gt;</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>close</code></td>
+                                <td>Close connections and release resources</td>
+                                <td>None</td>
+                                <td><code>Promise&lt;void&gt;</code></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h4 class="text-lg font-semibold mb-2">Data Types</h4>
+                <p class="mb-4">All request and response types are exported from the package and fully documented with
+                    TypeScript interfaces:</p>
+                <ul class="list-disc pl-6 mb-4">
+                    <li><code>SetPropPayload</code>, <code>SearchPropPayload</code>, <code>SearchAvailPayload</code>,
+                        <code>SetRoomPkgPayload</code>, <code>UpdRoomAvlPayload</code>, etc.
+                    </li>
+                    <li>Response types: <code>PropertyAvail</code>, <code>GetRoomDayResult</code>,
+                        <code>SegmentInfo</code>, <code>Codecs</code>
+                    </li>
+                </ul>
+                <p class="mb-4">Validation rules are identical to the other SDKs:</p>
+                <ul class="list-disc pl-6 mb-4">
+                    <li><code>propertyId</code>: UUID string (36 chars) or short ASCII identifier (max 14 chars).</li>
+                    <li><code>date</code>: YYYY-MM-DD, not in the past, less than or equal to 365 days ahead.</li>
+                    <li><code>amenities</code> and <code>rateCancel</code> must use the official codec values (available
+                        via <code>getCodecs()</code>).</li>
+                    <li>Maximum 256 room types per property (recommended less than 10 for optimal performance).</li>
+                </ul>
+                <p class="mb-4">Refer to the <em>Data Format and Limitations</em> section for the complete list of
+                    supported amenities and cancellation policies.</p>
             </div>
+            <br />
+            <hr />
+            <br />
+            <!-- --------------  Error handling  -------------- -->
+            <h4 class="text-lg font-semibold mb-2">Error handling</h4>
+            <p class="mb-4">
+                All async methods reject with <code>RoomzinError</code> (extends <code>Error</code>).
+                Inspect <code>err.kind</code> or use the helpers <code>isClient(err)</code>,
+                <code>isRequest(err)</code>, <code>isRetry(err)</code>, <code>isInternal(err)</code>
+                to decide whether the call should be retried, skipped, or escalated.
+            </p>
 
-            <h4 class="text-lg font-semibold mb-2">Data Types</h4>
-            <p class="mb-4">All request and response types are exported from the package and fully documented with TypeScript interfaces:</p>
+            <h5 class="text-md font-semibold mb-2">Request-level codes (ErrorKind.Request)</h5>
             <ul class="list-disc pl-6 mb-4">
-                <li><code>SetPropPayload</code>, <code>SearchPropPayload</code>, <code>SearchAvailPayload</code>, <code>SetRoomPkgPayload</code>, <code>UpdRoomAvlPayload</code>, etc.</li>
-                <li>Response types: <code>PropertyAvail</code>, <code>GetRoomDayResult</code>, <code>SegmentInfo</code>, <code>Codecs</code></li>
+                <li>
+                    <code>VALIDATION_ERROR</code> – payload failed a rule (bad UUID, date in the past, negative price,
+                    …).
+                    <em>Typical callers:</em> <code>setProp</code>, <code>setRoomPkg</code>, <code>setRoomAvl</code>,
+                    <code>incRoomAvl</code>, <code>decRoomAvl</code>, <code>search*</code>, <code>del*</code>.
+                </li>
+                <li>
+                    <code>NOT_FOUND</code> – the requested property / room-type / date does not exist.
+                    <em>Typical callers:</em> <code>getPropRoomDay</code>, <code>delRoomDay</code>,
+                    <code>delPropRoom</code>, <code>delProp</code>, <code>delSegment</code>.
+                </li>
+                <li>
+                    <code>OVERFLOW</code> – increment would exceed 255 units of availability.
+                    <em>Typical caller:</em> <code>incRoomAvl</code>.
+                </li>
+                <li>
+                    <code>UNDERFLOW</code> – decrement would drop below 0 availability.
+                    <em>Typical caller:</em> <code>decRoomAvl</code>.
+                </li>
+                <li>
+                    <code>FORBIDDEN</code> – auth token valid but lacks the role required for this command.
+                    <em>Can be returned by any method.</em>
+                </li>
             </ul>
-            <p class="mb-4">Validation rules are identical to the other SDKs:</p>
+
+            <h5 class="text-md font-semibold mb-2">Other common codes</h5>
             <ul class="list-disc pl-6 mb-4">
-                <li><code>propertyId</code>: UUID string (36 chars) or short ASCII identifier (max 14 chars).</li>
-                <li><code>date</code>: YYYY-MM-DD, not in the past, less than or equal to 365 days ahead.</li>
-                <li><code>amenities</code> and <code>rateCancel</code> must use the official codec values (available via <code>getCodecs()</code>).</li>
-                <li>Maximum 256 room types per property (recommended less than 10 for optimal performance).</li>
+                <li><code>AUTH_ERROR</code> (ErrorKind.Client) – missing or invalid token.</li>
+                <li><code>429</code> / <code>503</code> / <code>308</code> (ErrorKind.Retry) – back-off and retry with
+                    exponential delay.</li>
+                <li><code>PARSE_ERROR</code> / <code>RESPONSE_ERROR</code> (ErrorKind.Internal) – server returned
+                    unexpected payload; report to support.</li>
             </ul>
-            <p class="mb-4">Refer to the <em>Data Format and Limitations</em> section for the complete list of supported amenities and cancellation policies.</p>
-        </div>
-    </section>
+
+            <p class="mb-4">
+                Example defensive usage:
+            </p>
+            <pre><code class="language-typescript">import { isRequest, isRetry } from 'roomzin-js';
+
+try {
+  await client.setRoomPkg(payload);
+} catch (err: unknown) {
+  if (isRequest(err)) {
+    console.log('business rule failed:', err.code);
+  } else if (isRetry(err)) {
+    // back-off & retry
+  } else {
+    throw err; // fatal
+  }
+}
+</code></pre>
+            <!-- --------------  /Error handling  -------------- -->
+        </section>
         <section id="benchmark" class="content-section">
             <h2 class="text-2xl font-semibold mb-4">Benchmark Roomzin</h2>
             <a href="performance.html" class="btn-orng mb-6 inline-block">See Benchmark Report</a>
